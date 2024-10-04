@@ -25,7 +25,7 @@ export const PDFControls: React.FC<PDFControlsProps> = ({ className = '' }) => {
 
   return (
     <div
-      className={`flex items-center gap-4 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg ${className}`}
+      className={`flex items-center gap-4 bg-slate-500 backdrop-blur-sm p-4 rounded-lg shadow-lg ${className}`}
     >
       <button
         onClick={prevPage}

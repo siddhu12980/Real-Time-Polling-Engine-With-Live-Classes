@@ -6,10 +6,12 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { usePDFStore } from '../store/pdfStore';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { PDFControls } from './PDFControls';
 
-// Set worker source from CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+console.log(pdfjs.version)
+
+// pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs"
 
 interface PDFViewerProps {
   url: string;
@@ -32,11 +34,11 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
             'Content-Type': 'application/pdf',
           },
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch PDF');
         }
-        
+
         const arrayBuffer = await response.arrayBuffer();
         setPdfData(arrayBuffer);
       } catch (err) {
@@ -88,7 +90,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
         >
           <Page
             pageNumber={currentPage}
-            scale={scale *2 }
+            scale={scale * 2}
             className="shadow-lg"
             renderTextLayer={true}
             renderAnnotationLayer={true}
@@ -103,19 +105,17 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
 
 const PdfView = () => {
 
-    return (
-        <div className="min-h-screen bg-gray-100 p-8">
-            <div className="max-w-[90%] mx-auto bg-black p-8 rounded-3xl shadow-2xl">
-                <div className="aspect-video bg-white rounded-lg overflow-hidden">
-                    <PDFViewer url={pdf_url} className="w-full h-full" />
-                </div>
-            </div>
+  return (
+    <>      <div className="max-w-[90%] mx-auto bg-black p-8 rounded-3xl shadow-2xl">
+      <div className="aspect-video bg-white rounded-lg overflow-hidden">
+        <PDFViewer url={pdf_url} className="w-full h-full" />
+      </div>
+    </div>
 
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2">
-                <PDFControls />
-            </div>
-        </div>
-    );
+
+    </>
+
+  );
 
 
 

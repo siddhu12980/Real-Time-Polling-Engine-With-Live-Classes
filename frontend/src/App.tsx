@@ -5,6 +5,8 @@ import { Receiver } from './components/Receiver'
 import Live from './components/Live'
 import Join from './components/Join'
 import PdfView from './components/PdfView'
+import Draw from './components/Draw'
+import User from './components/User'
 
 function App() {
   return (
@@ -14,11 +16,14 @@ function App() {
         {/* <Route path='/' element={<Home />} />  */}
         {/**/}
         <Route path='/' element={<Join />} />
-        <Route path='/doc' element={<PdfView  />} />
+        <Route path='/doc' element={<PdfView />} />
+
+        <Route path='/draw' element={<Draw />} />
 
 
 
         <Route path='/live' element={<Live />} />
+        <Route path='/user' element={<User />} />
 
         <Route path="/sender" element={<Sender />} />
         <Route path="/receiver" element={<Receiver />} />
