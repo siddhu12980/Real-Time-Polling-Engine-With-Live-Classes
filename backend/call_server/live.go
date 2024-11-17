@@ -9,85 +9,70 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
-
-func enableCors(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-}
 
 type RequestData struct {
 	Name string `json:"name"`
 	Room string `json:"room"`
 }
 
+func getTokenHandler(c *gin.Context) {
+
+	if c.Request.Method == http.MethodOptions {
+		return
+	}
+
+	if c.Request.Method != http.MethodPost {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only POST method is allowed"})
+		return
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+		return
+	}
+	defer c.Request.Body.Close()
+
+	var data RequestData
+	if err := json.Unmarshal(body, &data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		return
+	}
+
+	fmt.Printf("Received: Name = %s\n", data.Name)
+	token := sdk.GetJoinToken(data.Room, data.Name)
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
 func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("err loading: %v", err)
+		log.Fatalf("err loading ENV : %v", err)
 	}
 
 	fmt.Print("Creating New SSignaling Server")
 	server := signaling.NewSignalingServer()
 
-	// sdk.Handle_room()
+	ginRouter := gin.Default()
 
-	sdk.Handle_part()
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 
-	http.HandleFunc("/getToken", func(w http.ResponseWriter, r *http.Request) {
+	ginRouter.Use(cors.New(config))
 
-		enableCors(w)
+	ginRouter.POST("/getToken", getTokenHandler)
 
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		body, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-			return
-		}
-
-		defer r.Body.Close()
-
-		var data RequestData
-		if err := json.Unmarshal(body, &data); err != nil {
-			http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-			return
-		}
-
-		fmt.Printf("Received: Name = %s\n", data.Name)
-
-		token := sdk.GetJoinToken(data.Room, data.Name)
-
-		message := map[string]interface{}{
-			"token": token,
-		}
-
-		jsonResponse, err := json.Marshal(message)
-		if err != nil {
-			http.Error(w, "Failed to serialize response", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-
-		w.Write(jsonResponse)
-
-	})
-
-	http.HandleFunc("/ws", server.HandleWebSocket)
+	ginRouter.GET("/ws", gin.WrapF(server.HandleWebSocket))
 
 	log.Printf("WebRTC signaling server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(ginRouter.Run(":8080"))
 }
