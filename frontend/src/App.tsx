@@ -4,6 +4,7 @@ import { Sender } from './components/Sender'
 import { Receiver } from './components/Receiver'
 import Live from './components/Live'
 import Join from './components/Join'
+import PdfView from './components/PdfView'
 
 function App() {
   return (
@@ -13,6 +14,10 @@ function App() {
         {/* <Route path='/' element={<Home />} />  */}
         {/**/}
         <Route path='/' element={<Join />} />
+        <Route path='/doc' element={<PdfView  />} />
+
+
+
         <Route path='/live' element={<Live />} />
 
         <Route path="/sender" element={<Sender />} />

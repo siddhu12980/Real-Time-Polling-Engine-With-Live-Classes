@@ -13,10 +13,13 @@
     "@livekit/components-react": "^2.6.7",
     "@livekit/components-styles": "^1.1.4",
     "livekit-client": "^2.6.0",
-    "lucide-react": "^0.460.0",
+    "lucide-react": "^0.344.0",
+    "pdfjs-dist": "4.4.168",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-pdf": "^9.1.1",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
