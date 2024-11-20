@@ -50,6 +50,43 @@ func getTokenHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+func getPdf(c *gin.Context) {
+	if c.Request.Method != http.MethodGet {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only GET method is allowed"})
+		return
+	}
+
+	doc := c.Param("doc")
+
+	fmt.Printf("doc : %s", doc)
+
+	const pdfURL = "https://sidd-bucket-digital.blr1.digitaloceanspaces.com/s2.pdf"
+
+	resp, err := http.Get(pdfURL)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch PDF"})
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(resp.StatusCode, gin.H{"error": "Failed to fetch PDF from the source"})
+		return
+	}
+
+	c.Writer.Header().Set("Content-Type", "application/pdf")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+
+	_, err = io.Copy(c.Writer, resp.Body)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stream PDF"})
+		return
+	}
+}
+
 func main() {
 
 	err := godotenv.Load()
@@ -70,6 +107,7 @@ func main() {
 	ginRouter.Use(cors.New(config))
 
 	ginRouter.POST("/getToken", getTokenHandler)
+	ginRouter.GET("/pdf/:doc", getPdf)
 
 	ginRouter.GET("/ws", gin.WrapF(server.HandleWebSocket))
 
