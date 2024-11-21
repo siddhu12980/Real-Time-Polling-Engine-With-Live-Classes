@@ -21,7 +21,6 @@ function App() {
         <Route path='/draw' element={<Draw />} />
 
 
-
         <Route path='/live' element={<Live />} />
         <Route path='/user' element={<User />} />
 

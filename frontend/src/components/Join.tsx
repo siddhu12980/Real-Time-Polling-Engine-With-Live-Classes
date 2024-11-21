@@ -72,11 +72,24 @@ const Join = () => {
             throw new Error(data.error || "Unknown error occurred");
           }
           console.log("Login successful", data);
+
+
           // Set the token as a cookie
+
+
+
           if (data.token) {
             sessionStorage.setItem('token', data.token);
 
-            window.location.href = "/live";
+            if (formData.username == "admin") {
+              window.location.href = "/live";
+
+
+            } else {
+              window.location.href = "/user";
+
+
+            }
 
           }
 

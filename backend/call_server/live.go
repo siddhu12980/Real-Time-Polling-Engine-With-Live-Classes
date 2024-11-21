@@ -95,6 +95,7 @@ func main() {
 	}
 
 	fmt.Print("Creating New SSignaling Server")
+
 	server := signaling.NewSignalingServer()
 
 	ginRouter := gin.Default()

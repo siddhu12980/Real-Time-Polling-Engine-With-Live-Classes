@@ -13,6 +13,7 @@
     "@excalidraw/excalidraw": "^0.17.6",
     "@livekit/components-react": "^2.6.7",
     "@livekit/components-styles": "^1.1.4",
+    "@tldraw/sync": "^3.4.1",
     "livekit-client": "^2.6.0",
     "lucide-react": "^0.344.0",
     "pdfjs-dist": "4.4.168",
@@ -20,6 +21,7 @@
     "react-dom": "^18.3.1",
     "react-pdf": "^9.1.1",
     "react-router-dom": "^6.28.0",
+    "tldraw": "^3.4.1",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
