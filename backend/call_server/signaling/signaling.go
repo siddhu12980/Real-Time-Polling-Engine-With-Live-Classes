@@ -5,6 +5,7 @@ import (
 	"live/helper"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -59,6 +60,61 @@ func (s *SignalingServer) RoomExists(roomID string) bool {
 	return exists
 }
 
+func getFormattedTime() string {
+	currentTime := time.Now()
+	return currentTime.Format("2006-01-02 15:04:05")
+}
+
+func (s *SignalingServer) getPeerFromROom(roomID string, userId string, conn *websocket.Conn) (*Peer, error) {
+	rooms, exists := s.rooms[roomID]
+
+	if !exists {
+		return nil, fmt.Errorf("s Room doesnot Exists")
+	}
+
+	if rooms.Sender.ID == userId && rooms.Sender != nil {
+
+		if rooms.Sender.Conn == conn {
+			fmt.Print("Sender Found with same id and same ws")
+			return rooms.Sender, nil
+
+		} else {
+			fmt.Print("Connection Reassong with new ws")
+			rooms.Sender.Conn = nil
+			rooms.Sender.Conn = conn
+
+			return rooms.Sender, nil
+
+		}
+	}
+
+	for _, receiver := range *rooms.Receivers {
+
+		if receiver != nil {
+
+			if receiver.ID == userId {
+
+				if receiver.Conn == conn {
+					fmt.Print("Receiver Found with same id and same ws")
+					return receiver, nil
+
+				} else {
+					fmt.Print("Connection Reassong with new ws")
+					receiver.Conn = nil
+					receiver.Conn = conn
+
+					return receiver, nil
+				}
+			}
+
+		}
+
+	}
+
+	return nil, fmt.Errorf("No User FOund with that iD")
+
+}
+
 func (s *SignalingServer) JoinRoom(roomId string, peer *Peer) error {
 	if !s.RoomExists(roomId) {
 		newRoom := NewRoom(roomId)
@@ -72,22 +128,27 @@ func (s *SignalingServer) JoinRoom(roomId string, peer *Peer) error {
 	return nil
 }
 
-func (s *SignalingServer) BroadCastMessage(roomId string, message Message) error {
+func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sender *websocket.Conn) error {
 
 	room, exists := s.rooms[roomId]
 	if !exists {
 		return fmt.Errorf("room %s does not exist", roomId)
 	}
+
 	fmt.Printf("Broadcasting message to room %s\n", roomId)
 
+	if room.Sender.Conn != sender {
+		room.Sender.safeSend(message)
+	}
+
 	for _, receiver := range *room.Receivers {
-		if receiver == nil || receiver.Conn == nil {
+		if receiver == nil || receiver.Conn == nil || receiver.Conn == sender {
 			continue
 		}
 
 		fmt.Print("Sending Message to ", receiver.Name)
 
-		err := receiver.Conn.WriteJSON(message)
+		err := receiver.safeSend(message)
 
 		if err != nil {
 			log.Printf("Error broadcasting to receiver %s: %v\n", receiver.ID, err)
@@ -195,7 +256,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		receiver.safeSend(message)
 
-		return s.BroadCastMessage(roomId, message)
+		return s.BroadCastMessage(roomId, message, conn)
 
 	case "startSlide":
 
@@ -221,7 +282,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message)
+		return s.BroadCastMessage(roomId, message, conn)
 
 	case "startBoard":
 
@@ -248,7 +309,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message)
+		return s.BroadCastMessage(roomId, message, conn)
 
 	case "endSlide":
 
@@ -275,7 +336,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message)
+		return s.BroadCastMessage(roomId, message, conn)
 
 	case "endBoard":
 
@@ -302,7 +363,47 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message)
+		return s.BroadCastMessage(roomId, message, conn)
+
+	case "chat":
+
+		roomId, ok := message["roomId"].(string)
+
+		if !ok || roomId == "" {
+			return fmt.Errorf("Room Id not provided")
+		}
+
+		userId, found := message["userId"].(string)
+
+		if !found {
+			return fmt.Errorf("user Id not provided")
+		}
+
+		user_message, found := message["message"]
+
+		if !found {
+			return fmt.Errorf("no message Provided")
+		}
+
+		if !s.RoomExists(roomId) {
+			return fmt.Errorf("Room not Available")
+		}
+
+		peer, err := s.getPeerFromROom(roomId, userId, conn)
+
+		if err != nil {
+			return err
+		}
+
+		new_message := map[string]interface{}{
+			"id":        message["id"],
+			"sender":    peer,
+			"message":   user_message,
+			"type":      "chat",
+			"timestamp": message["timestamp"],
+		}
+
+		return s.BroadCastMessage(roomId, new_message, conn)
 
 	default:
 		return fmt.Errorf("unknown message type: %s", messageType)
@@ -363,8 +464,18 @@ func (s *SignalingServer) handleDisconnect(conn *websocket.Conn) {
 
 		if room.Sender.Conn == conn {
 			log.Printf("Sender Disconneted From Rooom %s", roomID)
+
+			msg := fmt.Sprintf("%s left the chat", room.Sender.Name)
+
+			message := map[string]interface{}{
+				"message": msg,
+			}
+
+			s.BroadCastMessage(roomID, message, conn)
+
 			room.Sender = nil
 			isFound = true
+
 			break
 
 		}
@@ -382,14 +493,14 @@ func (s *SignalingServer) handleDisconnect(conn *websocket.Conn) {
 					message := map[string]interface{}{
 						"message": msg,
 					}
-					s.BroadCastMessage(roomID, message)
+					s.BroadCastMessage(roomID, message, conn)
 
 					if len(*room.Receivers) == 1 {
 						log.Printf("Room %s is now empty and will be removed\n", roomID)
 						delete(s.rooms, roomID)
 					}
 
-					return // Exit after handling the disconnection
+					return
 				}
 			}
 		}

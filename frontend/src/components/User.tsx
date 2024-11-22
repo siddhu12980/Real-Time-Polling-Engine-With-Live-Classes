@@ -11,8 +11,9 @@ import VideoChat from './VideoChat';
 import { CustomBar } from './CustomBar';
 import PdfView from './PdfView';
 import { PDFControls } from './PDFControls';
-// import { Tldraw } from 'tldraw';
+import { Tldraw } from 'tldraw';
 import { Track } from 'livekit-client';
+import Draw from './Draw';
 
 
 
@@ -49,13 +50,50 @@ export default function User() {
                         JSON.stringify({
                             type: "receiver",
                             roomId: "room1",
+                            name: "user1",
+                            id: "u1"
                         })
                     );
                 };
 
+                
+
                 sockets.onmessage = (message) => {
                     const data = message.data;
-                    console.log("Received:", data);
+                    const message_json = JSON.parse(data)
+                    console.log("Received:", message_json);
+
+                    const message_type = message_json["type"]
+
+                    console.log(message_type)
+
+                    if (message_type) {
+
+                        switch (message_type) {
+
+                            case "startSlide":
+                                setBoardShare(false)
+                                setShareSlide(true)
+                                break
+
+                            case "endSlide":
+                                setShareSlide(false)
+                                break
+
+                            case "startBoard":
+                                setShareSlide(false)
+                                setBoardShare(true)
+                                break
+
+                            case "endBoard":
+                                setBoardShare(false)
+                                break
+
+                        }
+
+                    }
+
+
                 };
 
                 sockets.onerror = (error) => {
@@ -72,7 +110,6 @@ export default function User() {
 
         fetchJWT();
         connect();
-
 
         return () => {
             if (socket) {
@@ -93,7 +130,7 @@ export default function User() {
                     serverUrl={serverUrl}
                     data-lk-theme="default"
                 >
-                    <AdaptiveLayout share_slide={shareSlide} board_share={shareBoard} />
+                    <AdaptiveLayout share_slide={shareSlide} board_share={shareBoard} ws={socket!} />
                     <CustomBar />
 
 
@@ -109,8 +146,8 @@ export default function User() {
 
 
 
-function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, board_share: boolean }) {
-    const store = useSyncDemo({ roomId: 'myapp-abc123' })
+function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean, board_share: boolean, ws: WebSocket }) {
+
 
     const trackRef = useTracks([
         { source: Track.Source.Camera, withPlaceholder: true },
@@ -135,9 +172,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
                     <PdfView />
                 </div>
 
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2">
-                    <PDFControls />
-                </div>
+
 
                 <div className="w-[30%] flex flex-col h-[80vh]">
 
@@ -153,7 +188,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
                     </div>
 
                     <div className="flex-[6] bg-white h-[40vh]  ">
-                        <VideoChat />
+                        <VideoChat ws={ws} roomId='room1' userId='u1' username='user1' />
                     </div>
                 </div>
             </div>
@@ -167,7 +202,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
             <div className="flex w-full  ">
 
                 <div className="w-[70%] h-full bg-slate-900 ">
-                    {/* <Tldraw store={store} /> */}
+                    <Draw role='student' roomId='room1' />
                 </div>
 
 
@@ -186,19 +221,21 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
                     </div>
 
                     <div className="flex-[6] bg-white h-[40vh]  ">
-                        <VideoChat />
+                        <VideoChat ws={ws} roomId='room1' userId='u1' username='user1' />
                     </div>
                 </div>
             </div>
         )
+
 
     }
 
 
     else {
 
-        if (shareTrackRef) {
+        if (shareTrackRef && !share_slide && !board_share) {
             return (
+
                 <div className="flex w-full  ">
                     {/* Screen Share (60%) */}
                     <div className="w-[70%] h-full bg-slate-900 ">
@@ -219,10 +256,12 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
                         </div>
 
                         <div className="flex-[6] bg-white h-[40vh]  ">
-                            <VideoChat />
+                            <VideoChat ws={ws} roomId='room1' userId='u1' username='user1' />
                         </div>
                     </div>
                 </div>
+
+
             );
         } else {
             return (
@@ -242,7 +281,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
 
                     {/* Chat (50%) */}
                     <div className="w-1/2   bg-blue-500   " >
-                        <VideoChat />
+                        <VideoChat ws={ws} roomId='room1' userId='u1' username='user1' />
                     </div>
                 </div>
             );

@@ -5,13 +5,12 @@ import {
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import VideoChat from './VideoChat';
 import { CustomBar } from './CustomBar';
 import PdfView from './PdfView';
 import { PDFControls } from './PDFControls';
 import Draw from './Draw';
-import { useSyncDemo } from '@tldraw/sync';
 
 
 
@@ -41,11 +40,14 @@ export default function User() {
         const sockets = new WebSocket("ws://127.0.0.1:8080/ws");
         sockets.onopen = () => {
           setSocket(sockets);
+
           console.log("Socket Connected");
           sockets.send(
             JSON.stringify({
-              type: "receiver",
+              type: "sender",
               roomId: "room1",
+              name: "sender1",
+              id: "s1"
             })
           );
         };
@@ -76,7 +78,7 @@ export default function User() {
         console.log("Socket Closed on Cleanup");
       }
     };
-  }, []); 
+  }, []);
 
   return (
 
@@ -90,7 +92,7 @@ export default function User() {
           serverUrl={serverUrl}
           data-lk-theme="default"
         >
-          <AdaptiveLayout share_slide={shareSlide} board_share={shareBoard} />
+          <AdaptiveLayout share_slide={shareSlide} board_share={shareBoard} ws={socket!} />
           <CustomBar
 
             onBoardShare={() => {
@@ -102,7 +104,7 @@ export default function User() {
                 return
               }
               socket.send(JSON.stringify({
-                "type": shareBoard ? "startBoard" : "endBoard",
+                "type": !shareBoard ? "startBoard" : "endBoard",
                 "roomId": "room1"
               }))
 
@@ -118,7 +120,7 @@ export default function User() {
               }
 
               socket.send(JSON.stringify({
-                "type": shareSlide ? "startSlide" : "endSlide",
+                "type": !shareSlide ? "startSlide" : "endSlide",
                 "roomId": "room1"
               }))
             }} />
@@ -133,7 +135,7 @@ export default function User() {
 
 
 
-function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, board_share: boolean }) {
+function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean, board_share: boolean, ws: WebSocket }) {
 
   const trackRef = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
@@ -175,7 +177,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
           </div>
 
           <div className="flex-[6] bg-white h-[40vh]  ">
-            <VideoChat />
+            <VideoChat roomId='room1' ws={ws} userId='s1' username='sender1' />
           </div>
         </div>
       </div>
@@ -189,7 +191,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
       <div className="flex w-full  ">
 
         <div className="w-[70%] h-full bg-slate-900 ">
-          <Draw />
+          <Draw role='teacher' roomId='room1' />
         </div>
 
 
@@ -208,13 +210,11 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
           </div>
 
           <div className="flex-[6] bg-white h-[40vh]  ">
-            <VideoChat />
+            <VideoChat  roomId='room1' ws={ws} userId='s1' username='sender1' />
           </div>
         </div>
       </div>
-    )
-
-  }
+    )}
 
 
   else {
@@ -241,7 +241,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
             </div>
 
             <div className="flex-[6] bg-white h-[40vh]  ">
-              <VideoChat />
+              <VideoChat ws={ws} userId='s1' username='sender1'  roomId='room1'/>
             </div>
           </div>
         </div>
@@ -263,7 +263,7 @@ function AdaptiveLayout({ share_slide, board_share }: { share_slide: boolean, bo
 
           {/* Chat (50%) */}
           <div className="w-1/2   bg-blue-500   " >
-            <VideoChat />
+            <VideoChat ws={ws} userId='s1' username='sender1'  roomId='room1'/>
           </div>
         </div>
       );
