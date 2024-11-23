@@ -365,6 +365,49 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		return s.BroadCastMessage(roomId, message, conn)
 
+	case "pdf-control":
+
+		value := 0.0
+
+		roomId, ok := message["roomId"].(string)
+
+		if !ok || roomId == "" {
+			return fmt.Errorf("Room Id not provided")
+		}
+
+		action, ok2 := message["action"].(string)
+
+		if !ok2 || action == "" {
+			return fmt.Errorf("Action")
+		}
+
+		val, okk := message["value"].(float64)
+
+		if okk {
+			value = val
+		}
+
+		if !s.RoomExists(roomId) {
+			return fmt.Errorf("Room not Available")
+		}
+
+		// room := s.rooms[roomId]
+
+		// if conn != room.Sender.Conn || room.Sender == nil || room.Sender.Conn == nil {
+		// 	fmt.Print("Only Admin can end Board")
+
+		// }
+
+		message := map[string]interface{}{
+			"type":   "pdf-control",
+			"action": action,
+			"value":  value,
+		}
+
+		fmt.Print("\n \n Sending Pdf control message", message)
+
+		return s.BroadCastMessage(roomId, message, conn)
+
 	case "chat":
 
 		roomId, ok := message["roomId"].(string)

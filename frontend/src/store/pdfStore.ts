@@ -7,16 +7,40 @@ interface PDFStore {
   setCurrentPage: (page: number) => void;
   setNumPages: (pages: number) => void;
   setScale: (scale: number) => void;
+  setCustomScale: () => void;
   nextPage: () => void;
   prevPage: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
 }
 
+
+const calculateScale = () => {
+  const screenWidth = window.innerWidth;
+  console.log("Screen Width", screenWidth)
+  if (screenWidth < 1000) {
+    return 1.0; // Small screen (mobile)
+  } else if (screenWidth >= 1000 && screenWidth < 1600) {
+    return 1.0
+
+  } else if (screenWidth >= 1600 && screenWidth < 2000) {
+    return 1.32; // Medium screen (tablet)
+  } else {
+    return 1.5; // Large screen (desktop)
+  }
+
+
+};
+
+
+
 export const usePDFStore = create<PDFStore>((set) => ({
   currentPage: 1,
   numPages: 1,
-  scale: 1.0,
+  scale: calculateScale(),
+
+  setCustomScale: () => set({ scale: calculateScale() }),
+
   setCurrentPage: (page) => set({ currentPage: page }),
   setNumPages: (pages) => set({ numPages: pages }),
   setScale: (scale) => set({ scale }),

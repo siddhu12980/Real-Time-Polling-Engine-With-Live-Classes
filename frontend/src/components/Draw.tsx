@@ -25,7 +25,7 @@ const Draw = ({ role, roomId }: DrawProps) => {
    
     const tldrawProps: Partial<TldrawProps> = {
         components,
-        store,
+            store,
         hideUi: true
     }
 

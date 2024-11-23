@@ -155,12 +155,12 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
     return (
       <div className="flex w-full  ">
 
-        <div className="w-[70%] h-full bg-slate-900 ">
-          <PdfView />
+        <div className="w-[70%] h-[80vh] bg-slate-900 ">
+          <PdfView  />
         </div>
 
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2">
-          <PDFControls />
+        <div className="fixed bottom-2 left-1/2 -translate-x-1/2">
+          <PDFControls ws={ws} isTeacher={true} />
         </div>
 
         <div className="w-[30%] flex flex-col h-[80vh]">

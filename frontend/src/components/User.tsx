@@ -168,9 +168,24 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
         return (
             <div className="flex w-full  ">
 
-                <div className="w-[70%] h-full bg-slate-900 ">
-                    <PdfView />
+                <div className="w-[70%] h-[80vh] bg-slate-900 ">
+                    <PdfView /> 
+             
+                <PDFControls ws={ws}  /> 
+                {/* what if it accept signal argument from ws and control pdf 
+                i mean teacher dont need signal arg so it would be false and clicks from teacher side wouuld send signal to studuent
+                through ws to student and if signal type is pdf then i will sent that signal to this comp and using that signal theacher 
+                can control pdf sildes in student 
+                since student wont have control over ther slides 
+
+                we could use two seperate control compnont one that generate signal for teacher 
+                one that accept signal for sutdent 
+
+                handel listining and sending logic in control comp 
+                since i am handelling join and leaving ws logic dont work on that 
+                 */}
                 </div>
+             
 
 
 
