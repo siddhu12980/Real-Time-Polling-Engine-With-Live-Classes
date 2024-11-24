@@ -3,6 +3,7 @@ import {
   LiveKitRoom,
   useTracks,
 } from '@livekit/components-react';
+
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
 import { useEffect, useRef, useState } from 'react';
@@ -11,6 +12,7 @@ import { CustomBar } from './CustomBar';
 import PdfView from './PdfView';
 import { PDFControls } from './PDFControls';
 import Draw from './Draw';
+import CreatePoll from './CreatePoll';
 
 
 
@@ -18,67 +20,9 @@ const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 
 export default function User() {
   const [token, setToken] = useState<string | null>(null);
-  const [shareSlide, setShareSlide] = useState<boolean>(false);
-  const [shareBoard, setBoardShare] = useState<boolean>(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
-  useEffect(() => {
-    const fetchJWT = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
-        if (!token) {
-          throw new Error("Token not found");
-        }
-        setToken(token);
-      } catch (e) {
-        console.error("Error fetching JWT:", e);
-      }
-    };
 
-    const connect = async () => {
-      try {
-        const sockets = new WebSocket("ws://127.0.0.1:8080/ws");
-        sockets.onopen = () => {
-          setSocket(sockets);
-
-          console.log("Socket Connected");
-          sockets.send(
-            JSON.stringify({
-              type: "sender",
-              roomId: "room1",
-              name: "sender1",
-              id: "s1"
-            })
-          );
-        };
-
-        sockets.onmessage = (message) => {
-          const data = message.data;
-          console.log("Received:", data);
-        };
-
-        sockets.onerror = (error) => {
-          console.error("Socket Error:", error);
-        };
-
-        sockets.onclose = () => {
-          console.log("Socket Closed");
-        };
-      } catch (e) {
-        console.error("Error connecting WebSocket:", e);
-      }
-    };
-
-    fetchJWT();
-    connect();
-
-    return () => {
-      if (socket) {
-        socket.close();
-        console.log("Socket Closed on Cleanup");
-      }
-    };
-  }, []);
 
   return (
 
@@ -93,37 +37,11 @@ export default function User() {
           data-lk-theme="default"
         >
           <AdaptiveLayout share_slide={shareSlide} board_share={shareBoard} ws={socket!} />
-          <CustomBar
 
-            onBoardShare={() => {
-              setShareSlide(false)
-              setBoardShare((p) => !p)
 
-              if (!socket || socket.readyState != WebSocket.OPEN) {
-                console.log("Sender Socket Not open ")
-                return
-              }
-              socket.send(JSON.stringify({
-                "type": !shareBoard ? "startBoard" : "endBoard",
-                "roomId": "room1"
-              }))
-
-            }}
-
-            onSlideShare={() => {
-              setBoardShare(false)
-              setShareSlide((p) => !p)
-
-              if (!socket || socket.readyState != WebSocket.OPEN) {
-                console.log("Sender Socket Not open ")
-                return
-              }
-
-              socket.send(JSON.stringify({
-                "type": !shareSlide ? "startSlide" : "endSlide",
-                "roomId": "room1"
-              }))
-            }} />
+          {showCreatePoll && <div className=' z-10  absolute left-2/3 w-[50vh] h-[55vh]  bottom-[8vh] rounded-2xl p-2 '>
+            <CreatePoll onClose={()=>setShowCreatePoll(false)} onSubmit={(data: any)=>{console.log(data)}}/>
+          </div>}
 
 
         </LiveKitRoom>
@@ -155,13 +73,36 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
     return (
       <div className="flex w-full  ">
 
-        <div className="w-[70%] h-[80vh] bg-slate-900 ">
-          <PdfView  />
+    
+        <div className="w-[30%] flex flex-col h-[80vh]">
+
+          <div className="flex-[4] bg-slate-600 h-1/4 pb-2">
+            {adminTrackRef ? (
+              <FocusLayout trackRef={adminTrackRef} className="h-full">
+              </FocusLayout>
+            ) : (
+              <div className="flex items-center justify-center h-full text-white">
+                Waiting for teacher...
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    )
+
+  }
+
+  else if (board_share) {
+
+    return (
+      <div className="flex w-full  ">
+
+        <div className="w-[70%] h-full bg-slate-900 ">
+       
         </div>
 
-        <div className="fixed bottom-2 left-1/2 -translate-x-1/2">
-          <PDFControls ws={ws} isTeacher={true} />
-        </div>
+
 
         <div className="w-[30%] flex flex-col h-[80vh]">
 
@@ -182,39 +123,7 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
         </div>
       </div>
     )
-
   }
-
-  else if (board_share) {
-
-    return (
-      <div className="flex w-full  ">
-
-        <div className="w-[70%] h-full bg-slate-900 ">
-          <Draw role='teacher' roomId='room1' />
-        </div>
-
-
-
-        <div className="w-[30%] flex flex-col h-[80vh]">
-
-          <div className="flex-[4] bg-slate-600 h-1/4 pb-2">
-            {adminTrackRef ? (
-              <FocusLayout trackRef={adminTrackRef} className="h-full">
-              </FocusLayout>
-            ) : (
-              <div className="flex items-center justify-center h-full text-white">
-                Waiting for teacher...
-              </div>
-            )}
-          </div>
-
-          <div className="flex-[6] bg-white h-[40vh]  ">
-            <VideoChat  roomId='room1' ws={ws} userId='s1' username='sender1' />
-          </div>
-        </div>
-      </div>
-    )}
 
 
   else {
@@ -241,7 +150,7 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
             </div>
 
             <div className="flex-[6] bg-white h-[40vh]  ">
-              <VideoChat ws={ws} userId='s1' username='sender1'  roomId='room1'/>
+              <VideoChat ws={ws} userId='s1' username='sender1' roomId='room1' />
             </div>
           </div>
         </div>
@@ -263,7 +172,7 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
 
           {/* Chat (50%) */}
           <div className="w-1/2   bg-blue-500   " >
-            <VideoChat ws={ws} userId='s1' username='sender1'  roomId='room1'/>
+            <VideoChat ws={ws} userId='s1' username='sender1' roomId='room1' />
           </div>
         </div>
       );

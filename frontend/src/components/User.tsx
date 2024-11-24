@@ -3,7 +3,6 @@ import {
     LiveKitRoom,
     useTracks,
 } from '@livekit/components-react';
-import { useSyncDemo } from '@tldraw/sync'
 
 import '@livekit/components-styles';
 import { useEffect, useState } from 'react';
@@ -11,7 +10,6 @@ import VideoChat from './VideoChat';
 import { CustomBar } from './CustomBar';
 import PdfView from './PdfView';
 import { PDFControls } from './PDFControls';
-import { Tldraw } from 'tldraw';
 import { Track } from 'livekit-client';
 import Draw from './Draw';
 
@@ -22,7 +20,7 @@ const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 
 
 export default function User() {
-    const [token, setToken] = useState<string | null>(null);
+
     const [shareSlide, setShareSlide] = useState<boolean>(false);
     const [shareBoard, setBoardShare] = useState<boolean>(false);
     const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -56,7 +54,7 @@ export default function User() {
                     );
                 };
 
-                
+
 
                 sockets.onmessage = (message) => {
                     const data = message.data;
@@ -168,24 +166,11 @@ function AdaptiveLayout({ share_slide, board_share, ws }: { share_slide: boolean
         return (
             <div className="flex w-full  ">
 
-                <div className="w-[70%] h-[80vh] bg-slate-900 ">
-                    <PdfView /> 
-             
-                <PDFControls ws={ws}  /> 
-                {/* what if it accept signal argument from ws and control pdf 
-                i mean teacher dont need signal arg so it would be false and clicks from teacher side wouuld send signal to studuent
-                through ws to student and if signal type is pdf then i will sent that signal to this comp and using that signal theacher 
-                can control pdf sildes in student 
-                since student wont have control over ther slides 
-
-                we could use two seperate control compnont one that generate signal for teacher 
-                one that accept signal for sutdent 
-
-                handel listining and sending logic in control comp 
-                since i am handelling join and leaving ws logic dont work on that 
-                 */}
+                <div className="w-[70%] h-[80vh] bg-slate-900 flex flex-col ">
+                    <PdfView />
+                    <PDFControls ws={ws} />
                 </div>
-             
+
 
 
 

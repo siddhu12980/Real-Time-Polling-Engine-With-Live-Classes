@@ -1,6 +1,16 @@
-import { ControlBar } from "@livekit/components-react";
+import { ControlBar, ControlBarProps } from "@livekit/components-react";
 
-export const CustomBar = ({ onSlideShare, onBoardShare, ...props }: { onSlideShare?: () => void, onBoardShare?: () => void }) => (
+interface CustomBarProps extends ControlBarProps {
+    onSlideShare?: () => void,
+    onBoardShare?: () => void,
+    onCreatePoll?: () => void,
+
+}
+
+
+export const CustomBar = ({ onSlideShare, onBoardShare, onCreatePoll, ...props }: CustomBarProps) => (
+
+
     <div className=" flex justify-center">
         <ControlBar {...props} />
 
@@ -10,6 +20,17 @@ export const CustomBar = ({ onSlideShare, onBoardShare, ...props }: { onSlideSha
                 onClick={onSlideShare}
             >
                 Share Slide
+            </button>
+        }
+
+
+
+        {onCreatePoll &&
+            <button
+                className="lk-button   text-xs "
+                onClick={onCreatePoll}
+            >
+                Create Poll
             </button>
         }
 

@@ -4,6 +4,7 @@ import Live from './components/Live'
 import Join from './components/Join'
 import PdfView from './components/PdfView'
 import User from './components/User'
+import Videolayout from './components/Videolayout'
 
 function App() {
   return (
@@ -14,11 +15,9 @@ function App() {
         {/**/}
         <Route path='/' element={<Join />} />
         <Route path='/doc' element={<PdfView />} />
+        <Route path='/layout' element={<Videolayout />} />
 
-
-
-
-        <Route path='/live' element={<Live />} />
+        <Route path='/live' element={<Videolayout />} />
         <Route path='/user' element={<User />} />
 
 
