@@ -1,18 +1,27 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useRecoilState } from "recoil";
+import { userState } from "../store/userStore";
 
 interface FormData {
   username: string;
   password: string;
 }
-const apiUrl = "http://localhost:8080/getToken"
-
 const Join = () => {
+
+
+  const navigate = useNavigate()
+
+
   const [formData, setFormData] = useState<FormData>({
     username: "",
-    password: "",
+    password: ""
+
   });
+
+  const [user, setUser] = useRecoilState(userState)
+
 
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
@@ -37,67 +46,19 @@ const Join = () => {
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
     } else {
-      // Handle successful form submission (e.g., send data to the server)
+
       console.log("Form submitted successfully", formData);
 
-      fetch(`${apiUrl}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.username,
-          room: formData.password,
-        }),
-      })
-        .then(async (response) => {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-
-            const data = await response.json().catch((err) => {
-              throw new Error(`Failed to parse JSON: ${err.message}`);
-            });
-
-            return { data, status: response.status };
-
-          } else {
-            const text = await response.text();
-            throw new Error(
-              `Unexpected response content type: ${contentType}. Response: ${text}`
-            );
-          }
-        })
-        .then(({ data, status }) => {
-          if (status !== 200) {
-            throw new Error(data.error || "Unknown error occurred");
-          }
-          console.log("Login successful", data);
-
-
-          // Set the token as a cookie
+      setUser({
+        ...user,
+        userName: formData.username,
+        isteacher: formData.username.toLowerCase() === "admin",
+      });
 
 
 
-          if (data.token) {
-            sessionStorage.setItem('token', data.token);
+      navigate("/home")
 
-            if (formData.username == "admin") {
-              window.location.href = "/live";
-
-
-            } else {
-              window.location.href = "/user";
-
-
-            }
-
-          }
-
-        })
-
-        .catch((error) => {
-          console.error("Error:", error);
-        });
       setFormData({
         username: "",
         password: "",
@@ -142,6 +103,7 @@ const Join = () => {
                   <p className="text-red-500 text-xs">{errors.username}</p>
                 )}
               </div>
+
 
 
               <div>
