@@ -111,7 +111,7 @@ func (s *SignalingServer) getPeerFromROom(roomID string, userId string, conn *we
 
 	}
 
-	return nil, fmt.Errorf("No User FOund with that iD")
+	return nil, fmt.Errorf("no User FOund with that iD")
 
 }
 
@@ -257,6 +257,49 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 		receiver.safeSend(message)
 
 		return s.BroadCastMessage(roomId, message, conn)
+
+	case "startPoll":
+
+		roomId, okk := message["roomId"].(string)
+
+		if !okk || roomId == "" {
+			return fmt.Errorf("Room ID is required")
+		}
+
+		pollData, ok := message["pollData"].(map[string]interface{})
+
+		if !ok {
+			return fmt.Errorf("poll data is required")
+		}
+
+		id, ok := pollData["id"].(string)
+
+		if !ok || id == "" {
+			id = helper.GenerateID()
+			pollData["id"] = id
+		}
+
+		if !s.RoomExists(roomId) {
+			return fmt.Errorf("Room does not exist")
+		}
+
+		// Broadcast the poll to all connected peers in the room
+		broadcastMessage := map[string]interface{}{
+			"id":       id,
+			"type":     "startPoll",
+			"pollData": pollData,
+			"roomId":   roomId,
+		}
+
+		err := s.BroadCastMessage(roomId, broadcastMessage, conn)
+
+		if err != nil {
+			return fmt.Errorf("failed to broadcast poll: %v", err)
+		}
+
+		log.Printf("Poll started in room %s with ID %s", roomId, id)
+
+		return nil
 
 	case "startSlide":
 
