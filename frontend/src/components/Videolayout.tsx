@@ -13,13 +13,77 @@ import { PDFControls } from './PDFControls';
 import { CustomBar } from './CustomBar';
 import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
+import '@livekit/components-styles';
+import { useParams } from 'react-router-dom';
+import { useRecoilState } from 'recoil';
+import { userState } from '../store/userStore';
+import CreatePoll from './CreatePoll';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
+const apiUrl = 'http://localhost:8080/getToken';
 
 
 const Videolayout = () => {
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useRecoilState(userState);
+  const params = useParams()
 
-  const token = sessionStorage.getItem('token')
+  useEffect(() => {
+    const getToken = async () => {
+      console.log("Getting TOken for User", user, params.roomId);
+
+      fetch(`${apiUrl}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: user.userName,
+          room: params.roomId,
+        }),
+      })
+        .then(async (response) => {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+
+            const data = await response.json().catch((err) => {
+              throw new Error(`Failed to parse JSON: ${err.message}`);
+            });
+
+            return { data, status: response.status };
+
+          } else {
+            const text = await response.text();
+            throw new Error(
+              `Unexpected response content type: ${contentType}. Response: ${text}`
+            );
+          }
+        })
+        .then(({ data, status }) => {
+          if (status !== 200) {
+            throw new Error(data.error || "Unknown error occurred");
+          }
+          console.log("Tokken success", data);
+
+
+          setToken(data.token)
+
+          setUser({ ...user, livekitToken: data.token })
+
+        })
+
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    }
+
+    getToken()
+
+  }, []);
+
+
+
+
 
   return <>
     {(token && token != "") ?
@@ -30,7 +94,7 @@ const Videolayout = () => {
         serverUrl={serverUrl}
         data-lk-theme="default"
       >
-        <Videolayouts />
+        <Videolayouts user={user} roomId={params.roomId!} />
       </LiveKitRoom >
       : <div> Lodaingn ... </div>
     }
@@ -38,10 +102,11 @@ const Videolayout = () => {
 
 }
 
-const Videolayouts = () => {
+const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
   const [activeSection, setActiveSection] = useState('Chat');
+  const [createPoll, setCreatePoll] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [changeScreen, setChangeScreen] = useState<boolean>(false);
+  const [changeScreen, setChangeScreen] = useState<boolean>(true);
   const [teacherContent, setTeacherContent] = useState<'Slide' | 'Screen' | 'Whiteboard' | 'None'>('None');
 
 
@@ -74,7 +139,7 @@ const Videolayouts = () => {
             JSON.stringify({
               type: "sender",
               roomId: "room1",
-              name: "sender1",
+              name: user.userName,
               id: "s1"
             })
           );
@@ -110,6 +175,22 @@ const Videolayouts = () => {
     };
   }, [shareTrackRef]);
 
+  const handlePollSubmit = (data: any) => {
+    console.log("Poll Submitted", data);
+
+    if (!socket || socket.readyState != WebSocket.OPEN) {
+      console.log("Sender Socket Not open ")
+      return
+    }
+
+    socket.send(JSON.stringify({
+      "id": "p1",
+      "type": "startPoll",
+      "roomId": "room1",
+      "pollData": data
+    }))
+  }
+
 
 
   const renderActiveComponent = () => {
@@ -130,11 +211,11 @@ const Videolayouts = () => {
   const renderTeacherContent = () => {
     switch (teacherContent) {
       case 'Slide':
-        return <div className="p-4  bg-blue-300 rounded h-[80vh] w-[60vw] ">   <PdfView /></div>;
+        return <div className="bg-blue-300 rounded">   <PdfView /></div>;
       case 'Screen':
         return <div className="p-4 bg-green-300 rounded"><ShareTrackView shareTrackRef={shareTrackRef} /></div>;
       case 'Whiteboard':
-        return <div className="p-4 bg-yellow-300 rounded h-[85vh] w-[60vw]" > <Draw role='teacher' roomId='room1' /> </div>;
+        return <div className=" bg-yellow-300 rounded  w-full h-full" > <Draw role='teacher' roomId='room1' /> </div>;
 
       default:
         return <div onClick={() => setTeacherContent("Slide")} className="p-4 bg-red-300 rounded">  Nothing to See Here</div>;
@@ -142,13 +223,12 @@ const Videolayouts = () => {
   };
 
   return (
-    <div className="p-4 h-screen flex">
+    <div className="p-4 h-screen w-screen flex">
 
       {changeScreen ? (
-        <div className="flex w-full">
+        <div className="flex w-full ">
 
-          <div className="w-[70vw] bg-slate-400  flex flex-col justify-between">
-
+          <div className="w-[70%] bg-slate-400 flex flex-col h-full justify-between">
 
             <div className="p-2 bg-slate-600 text-white text-center">
               Teacher Status:
@@ -157,19 +237,41 @@ const Videolayouts = () => {
             </div>
 
             {/* Middle Section: Shared Content */}
-            <div className="flex-grow flex items-center justify-center h-[100vh] w-full">
+            <div className="h-full">
               <AdaptiveVideo adminTrackRef={adminTrackRef} />
             </div>
 
 
 
-            <div className='p-2 bg-slate-400'>
+            <div className='bg-slate-400'>
+
+
+              {createPoll && (
+                <div className='bg-slate-600  absolute bottom-14  right-1/2 z-10'>
+                  <CreatePoll
+                    onClose={() => {
+                      console.log("Poll closed");
+                      setCreatePoll(false);
+                    }}
+
+                    onSubmit={(data: any) => {
+                      console.log("Poll submitted");
+                      handlePollSubmit(data);
+                      setCreatePoll(false);
+                    }}
+                  />
+                </div>
+              )}
+
               <CustomBar
+                onCreatePoll={() => {
+                  console.log("Create Poll")
+                  setCreatePoll(true)
+                }}
+
 
                 onBoardShare={() => {
-
                   { teacherContent == "Whiteboard" ? setChangeScreen(true) : setTeacherContent("Whiteboard"); setChangeScreen(false) }
-
                   if (!socket || socket.readyState != WebSocket.OPEN) {
                     console.log("Sender Socket Not open ")
                     return
@@ -196,6 +298,9 @@ const Videolayouts = () => {
                   }))
                 }} />
 
+
+
+
             </div>
 
 
@@ -211,61 +316,76 @@ const Videolayouts = () => {
             </div>
           </div>
         </div>
+
+
+
       ) : (
-        <div className="flex w-full">
+        <div className="flex w-full   ">
           {/* Teacher Sharing Section */}
-          <div className="w-[60vw] bg-slate-400 flex flex-col justify-between">
+          <div className="w-[60vw] bg-slate-400 h-full flex flex-col justify-between">
             {/* Top Section: Teacher Status */}
-            <div className="p-2 bg-slate-600 text-white text-center">
+            <div className="p-2 bg-slate-600 h-[5vh] text-white text-center">
               Teacher Status:
               <span className="font-bold"> Class in Progress</span> |
               <span className="font-bold"> 30 Participants</span>
             </div>
 
             {/* Middle Section: Shared Content */}
-            <div className="flex-grow flex items-center justify-center ">
+            {/* <div className="flex-grow flex items-center justify-center"> */}
+            {/* {renderTeacherContent()} */}
+            {/* </div> */}
+            <div className='flex overflow-x-scroll overflow-y-hidden'>
               {renderTeacherContent()}
             </div>
-            {teacherContent == "Slide" ? <div className=' flex  items-center justify-center '> <PDFControls className='z-10' isTeacher={true} /> </div> : <></>}
+            {teacherContent == "Slide" ? <div className=' flex  items-center justify-center '> <PDFControls className='z-10' isTeacher={true} ws={socket!} /> </div> : <></>}
 
             {/* Bottom Section: Control Bar */}
 
             <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
 
               <CustomBar
-
                 onBoardShare={() => {
-
-                  { teacherContent == "Whiteboard" ? setChangeScreen(true) : setTeacherContent("Whiteboard") }
-
-                  if (!socket || socket.readyState != WebSocket.OPEN) {
-                    console.log("Sender Socket Not open ")
-                    return
+                  if (teacherContent === "Whiteboard") {
+                    setChangeScreen(true);
+                  } else {
+                    setTeacherContent("Whiteboard");
                   }
-                  socket.send(JSON.stringify({
-                    "type": teacherContent != "Whiteboard" ? "startBoard" : "endBoard",
-                    "roomId": "room1"
-                  }))
 
+                  if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    console.log("Sender Socket Not open");
+                    return;
+                  }
+
+                  socket.send(
+                    JSON.stringify({
+                      type: teacherContent !== "Whiteboard" ? "startBoard" : "endBoard",
+                      roomId: roomId,
+                    })
+                  );
                 }}
 
                 onSlideShare={() => {
-
-                  { teacherContent == "Slide" ? setChangeScreen(true) : setTeacherContent("Slide") }
-
-
-
-                  if (!socket || socket.readyState != WebSocket.OPEN) {
-                    console.log("Sender Socket Not open ")
-                    return
+                  if (teacherContent === "Slide") {
+                    setChangeScreen(true);
+                  } else {
+                    setTeacherContent("Slide");
                   }
 
-                  socket.send(JSON.stringify({
-                    "type": teacherContent != "Slide" ? "startSlide" : "endSlide",
-                    "roomId": "room1"
-                  }))
-                }} />
+                  if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    console.log("Sender Socket Not open");
+                    return;
+                  }
+
+                  socket.send(
+                    JSON.stringify({
+                      type: teacherContent !== "Slide" ? "startSlide" : "endSlide",
+                      roomId: roomId,
+                    })
+                  );
+                }}
+              />
             </div>
+
 
           </div>
 
@@ -285,14 +405,14 @@ const Videolayouts = () => {
       )}
 
       {/* Sidebar for Navigation */}
-      <div className="w-[5vw] bg-gray-100  rounded">
+      <div className="w-[5%] bg-gray-100  rounded">
         <ul className="space-y-2">
           <li>
             <button
               className={`w-full text-left p-2 rounded ${activeSection === 'Chat' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('Chat')}
             >
-              <IoChatboxEllipses size={24} />
+              <IoChatboxEllipses size={24} color='black' />
             </button>
           </li>
           <li>
@@ -300,7 +420,7 @@ const Videolayouts = () => {
               className={`w-full text-left p-2 rounded ${activeSection === 'AskQuestions' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('AskQuestions')}
             >
-              <BsFillQuestionSquareFill size={24} />
+              <BsFillQuestionSquareFill size={24} color='black' />
             </button>
           </li>
           <li>
@@ -308,7 +428,7 @@ const Videolayouts = () => {
               className={`w-full text-left p-2 rounded ${activeSection === 'Participants' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('Participants')}
             >
-              <BsFillPeopleFill size={24} />
+              <BsFillPeopleFill size={24} color='black' />
             </button>
           </li>
           <li>
@@ -316,7 +436,7 @@ const Videolayouts = () => {
               className={`w-full text-left p-2 rounded ${activeSection === 'Pool' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('Pool')}
             >
-              <FaPollH size={24} />
+              <FaPollH size={24} color='black' />
             </button>
           </li>
         </ul>

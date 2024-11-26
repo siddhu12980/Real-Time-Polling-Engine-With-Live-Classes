@@ -4,7 +4,7 @@ import {
   useTracks,
 } from '@livekit/components-react';
 
-import '@livekit/components-styles';
+
 import { useEffect, useState } from 'react';
 import VideoChat from './VideoChat';
 import { CustomBar } from './CustomBar';
@@ -12,8 +12,6 @@ import PdfView from './PdfView';
 import { PDFControls } from './PDFControls';
 import { Track } from 'livekit-client';
 import Draw from './Draw';
-
-
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 

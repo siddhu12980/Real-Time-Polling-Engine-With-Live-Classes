@@ -16,10 +16,10 @@ function App() {
       < BrowserRouter >
         <Routes>
           <Route path='/' element={<Join />} />
-          <Route path='/doc' element={<PdfView />} />
+          <Route path='/home' element={<Home />} />
           <Route path='/video-admin/:roomId' element={<Videolayout />} />
           <Route path='/video-user/:roomId' element={<VideoUserLayout />} />
-          <Route path='/home' element={<Home />} />
+
         </Routes>
       </BrowserRouter >
 

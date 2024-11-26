@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PenLine, Timer, Plus, Minus, CheckCircle2, X } from "lucide-react";
+import { create } from 'zustand';
 
 const PollType = {
   FIVE_OPTION: "5_option",
@@ -41,6 +42,7 @@ const CreatePoll = ({ onClose, onSubmit }:any) => {
     onSubmit({
       type: pollType,
       correctAnswer,
+      createdAt: new Date().toISOString(),
       timer,
       question: question.trim() || null
     });
@@ -109,6 +111,7 @@ const CreatePoll = ({ onClose, onSubmit }:any) => {
             ))}
           </div>
         </div>
+        
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Timer (seconds)</label>

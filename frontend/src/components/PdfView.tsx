@@ -98,7 +98,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
           onLoadError={onDocumentLoadError}
           className="flex justify-center"
           loading={
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
             </div>
           }
@@ -106,7 +106,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
           <Page
             pageNumber={currentPage}
             scale={scale}
-            className="shadow-lg"
+            className="shadow-lg overflow-clip"
             renderTextLayer={true}
             renderAnnotationLayer={true}
             loading={null}
@@ -121,9 +121,9 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ url, className = '' }) => 
 const PdfView = () => {
 
   return (
-    <>      <div className="bg-black p-2 rounded-3xl shadow-xl">
-      <div className=" bg-white rounded-lg   overflow-clip">
-        <PDFViewer url={pdf_url} className="w-full h-full" />
+    <>      <div className="bg-black rounded-3xl shadow-xl">
+      <div className=" bg-white rounded-lg">
+        <PDFViewer url={pdf_url} className="" />
       </div>
     </div>
 

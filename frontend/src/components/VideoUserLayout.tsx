@@ -12,14 +12,80 @@ import { PDFControls } from './PDFControls';
 import { CustomBar } from './CustomBar';
 import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
+import '@livekit/components-styles';
+import { useRecoilState } from 'recoil';
+import { userState } from '../store/userStore';
+import { useParams } from 'react-router-dom';
+import Poll from './Poll';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
+
+const apiUrl = 'http://localhost:8080/getToken';
 
 
 
 
 const VideoUserLayout = () => {
-  const token = sessionStorage.getItem('token')
+
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useRecoilState(userState);
+  const params = useParams()
+
+  useEffect(() => {
+
+    const getToken = async () => {
+      console.log("Getting TOken for User", user, params.roomId);
+
+      fetch(`${apiUrl}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: user.userName,
+          room: params.roomId,
+        }),
+      })
+        .then(async (response) => {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+
+            const data = await response.json().catch((err) => {
+              throw new Error(`Failed to parse JSON: ${err.message}`);
+            });
+
+            return { data, status: response.status };
+
+          } else {
+            const text = await response.text();
+            throw new Error(
+              `Unexpected response content type: ${contentType}. Response: ${text}`
+            );
+          }
+        })
+        .then(({ data, status }) => {
+          if (status !== 200) {
+            throw new Error(data.error || "Unknown error occurred");
+          }
+          console.log("Tokken success", data);
+
+
+          setToken(data.token)
+
+          setUser({ ...user, livekitToken: data.token })
+
+        })
+
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    }
+
+    getToken()
+
+  }, []);
+
+
 
 
   return <>
@@ -31,7 +97,7 @@ const VideoUserLayout = () => {
         serverUrl={serverUrl}
         data-lk-theme="default"
       >
-        <Videolayouts />
+        <Videolayouts user={user} roomId={params.roomId!} />
       </LiveKitRoom >
       : <div> Lodaingn ... </div>
     }
@@ -39,8 +105,9 @@ const VideoUserLayout = () => {
 
 }
 
-const Videolayouts = () => {
+const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
   const [activeSection, setActiveSection] = useState('Chat');
+  const [pollData, setPollData] = useState<any>(null);
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   const [changeScreen, setChangeScreen] = useState<boolean>(true);
@@ -74,7 +141,7 @@ const Videolayouts = () => {
             JSON.stringify({
               type: "receiver",
               roomId: "room1",
-              name: "user1",
+              name: user.userName,
               id: "u1"
             })
           );
@@ -113,27 +180,34 @@ const Videolayouts = () => {
                 setChangeScreen(true)
                 break
 
+              case "startPoll":
+                console.log(message_json)
+                setPollData((message_json as { pollData: any }).pollData)
+                setActiveSection("Pool")
             }
-          }
 
-        };
 
-        sockets.onerror = (error) => {
-          console.error("Socket Error:", error);
-        };
+          };
 
-        sockets.onclose = () => {
-          console.log("Socket Closed");
+          sockets.onerror = (error) => {
+            console.error("Socket Error:", error);
+          };
+
+          sockets.onclose = () => {
+            console.log("Socket Closed");
+          };
         };
       } catch (e) {
         console.error("Error connecting WebSocket:", e);
       }
-    };
 
+    }
     connect();
 
     if (shareTrackRef) {
       console.log("Screen share is happening");
+
+      setChangeScreen(false);
       setTeacherContent("Screen");
     }
 
@@ -147,16 +221,20 @@ const Videolayouts = () => {
 
 
 
+
   const renderActiveComponent = () => {
+
     switch (activeSection) {
       case 'Chat':
-        return <VideoChat ws={socket} roomId='room1' userId='s1' username='sender1' />;
+        return <VideoChat ws={socket} roomId='room1' userId='u1' username='user1' />;
       case 'AskQuestions':
         return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Pool':
-        return <div className="p-4 bg-gray-300 rounded">Pool Component</div>;
+        return <div className="p-4 bg-gray-300 rounded"><Poll sendToTeacher={(data) => {
+          console.log("Sending to teacher", data)
+        }} pollData={pollData} /></div>;
       default:
         return null;
     }
@@ -165,7 +243,7 @@ const Videolayouts = () => {
   const renderTeacherContent = () => {
     switch (teacherContent) {
       case 'Slide':
-        return <div className="p-4  bg-blue-300 rounded h-[80vh] w-[60vw] ">   <PdfView /></div>;
+        return <div className="p-4  bg-blue-300 rounded ">   <PdfView /></div>;
       case 'Screen':
         return <div className="p-4 bg-green-300 rounded"><ShareTrackView shareTrackRef={shareTrackRef} /></div>;
       case 'Whiteboard':
@@ -181,18 +259,20 @@ const Videolayouts = () => {
 
       {/* Main Layout */}
       {changeScreen ? (
-        <div className="flex w-full">
-          {/* Video/Shared Content Section */}
-          <div className="w-[70vw] bg-slate-400  flex flex-col justify-between">
 
-            <div className="flex-grow flex items-center justify-center h-[100vh] w-full">
+        <div className="flex w-[95vw]">
+
+          <div className="w-[70vw] bg-slate-400  flex flex-col justify-between">
+            <div className=" flex items-center justify-center h-[90vh] w-full">
               <AdaptiveVideo adminTrackRef={adminTrackRef} />
             </div>
-
+            <div className=' h-[calc(100vh-90vh)]'>
+              <CustomBar />
+            </div>
           </div>
 
 
-          <div className="flex flex-col w-[35vw]">
+          <div className="flex flex-col w-[calc(100vw-70vw)]">
             <div className="h-[100vh] bg-slate-700">
               {renderActiveComponent()}
             </div>
@@ -207,7 +287,7 @@ const Videolayouts = () => {
               {renderTeacherContent()}
             </div>
 
-            {teacherContent == "Slide" ? <div className=' flex  items-center justify-center '> <PDFControls className='z-10' /></div> : <></>}
+            {teacherContent == "Slide" ? <div className=' flex  items-center justify-center '> <PDFControls className='z-10' ws={socket!} /></div> : <></>}
 
             <div className="p-2 bg-slate-800 text-white ">
               <CustomBar />
@@ -229,15 +309,17 @@ const Videolayouts = () => {
         </div>
       )}
 
+
+
       {/* Sidebar for Navigation */}
-      <div className="w-[5vw] bg-gray-300  rounded">
+      <div className="w-[calc(100vw-95vw)] bg-gray-300  rounded">
         <ul className="space-y-2">
           <li>
             <button
               className={`w-full text-left p-2 rounded ${activeSection === 'Chat' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('Chat')}
             >
-              <IoChatboxEllipses size={24} />
+              <IoChatboxEllipses size={24} color='black' />
             </button>
           </li>
           <li>
@@ -245,7 +327,7 @@ const Videolayouts = () => {
               className={`w-full text-left p-2 rounded ${activeSection === 'AskQuestions' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('AskQuestions')}
             >
-              <BsFillQuestionSquareFill size={24} />
+              <BsFillQuestionSquareFill size={24} color='black' />
             </button>
           </li>
           <li>
@@ -254,7 +336,7 @@ const Videolayouts = () => {
               onClick={() => setActiveSection('Participants')}
             >
 
-              <BsFillPeopleFill size={24} />
+              <BsFillPeopleFill size={24} color='black' />
 
             </button>
 
@@ -264,7 +346,7 @@ const Videolayouts = () => {
               className={`w-full text-left p-2 rounded ${activeSection === 'Pool' ? 'bg-gray-400' : ''}`}
               onClick={() => setActiveSection('Pool')}
             >
-              <FaPollH size={24} />
+              <FaPollH size={24} color='black' />
             </button>
           </li>
         </ul>

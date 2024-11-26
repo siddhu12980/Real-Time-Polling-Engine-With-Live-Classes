@@ -30,3 +30,7 @@
   --color-primary-darkest: #e86e99;
   --color-primary-light: #dcbec9;
 }
+
+.gradient-bar > div {
+  background: linear-gradient(to right, blue, red);
+}

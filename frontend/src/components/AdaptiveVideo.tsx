@@ -1,6 +1,4 @@
-import { FocusLayout, LiveKitRoom, TrackReferenceOrPlaceholder, useTracks } from "@livekit/components-react";
-import { Track } from "livekit-client";
-import { CustomBar } from "./CustomBar";
+import { FocusLayout,  TrackReferenceOrPlaceholder} from "@livekit/components-react";
 
 interface AdaptiveVideoInterface {
     adminTrackRef: TrackReferenceOrPlaceholder | undefined

@@ -23,9 +23,6 @@ const Home = () => {
 
   //TODO need to implement a route to get all the classsese
 
-  const userName = user.userName
-  const isTeacher = (user.isteacher);
-
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -81,63 +78,9 @@ const Home = () => {
     return matchesSearch && matchesFilter;
   });
 
+
   const handleClassClick = (roomId: string) => {
-
-    const apiUrl = "http://localhost:8080/getToken"
-
-    const getToken = async () => {
-      console.log("Getting TOken for User", user, roomId)
-      fetch(`${apiUrl}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: user.userName,
-          room: roomId,
-        }),
-      })
-        .then(async (response) => {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-
-            const data = await response.json().catch((err) => {
-              throw new Error(`Failed to parse JSON: ${err.message}`);
-            });
-
-            return { data, status: response.status };
-
-          } else {
-            const text = await response.text();
-            throw new Error(
-              `Unexpected response content type: ${contentType}. Response: ${text}`
-            );
-          }
-        })
-        .then(({ data, status }) => {
-          if (status !== 200) {
-            throw new Error(data.error || "Unknown error occurred");
-          }
-          console.log("Tokken success", data);
-
-          sessionStorage.setItem('token', data.token)
-
-          //
-          // if (data.token) {
-          //   setUser({ ...user, livekitToken: data.token })
-          // }
-
-        })
-
-        .catch((error) => {
-          console.error("Error:", error);
-        });
-    }
-
-    getToken()
-
-
-    if (isTeacher) {
+    if (user.isteacher) {
       navigate(`/video-admin/${roomId}`)
     } else {
       navigate(`/video-user/${roomId}`)
@@ -218,8 +161,6 @@ const Home = () => {
     </div>
   );
 
-
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-6xl mx-auto p-6">
@@ -227,9 +168,9 @@ const Home = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Virtual Classroom</h1>
-              <p className="text-gray-600 mt-1">Welcome back, {userName}</p>
+              <p className="text-gray-600 mt-1">Welcome back, {user.userName}</p>
             </div>
-            {isTeacher && (
+            {user.isteacher && (
               <button
                 onClick={() => setShowModal(true)}
                 className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors duration-300 flex items-center space-x-2 shadow-md hover:shadow-lg"

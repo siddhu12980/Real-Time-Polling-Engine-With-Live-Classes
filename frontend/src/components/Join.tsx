@@ -55,8 +55,6 @@ const Join = () => {
         isteacher: formData.username.toLowerCase() === "admin",
       });
 
-
-
       navigate("/home")
 
       setFormData({

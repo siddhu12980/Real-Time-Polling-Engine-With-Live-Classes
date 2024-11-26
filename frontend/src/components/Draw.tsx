@@ -30,7 +30,7 @@ const Draw = ({ role, roomId }: DrawProps) => {
 
   return (
     <div
-      className="w-full h-[80vh] pointer-events-none"
+      className="w-full  h-[78vh]  pointer-events-none"
       style={{ pointerEvents: role !== "teacher" ? "none" : "auto" }}
     >
 
