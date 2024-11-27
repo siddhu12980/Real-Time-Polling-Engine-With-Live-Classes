@@ -139,10 +139,31 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
             JSON.stringify({
               type: "sender",
               roomId: "room1",
-              name: user.userName,
+              name: "sender",
               id: "s1"
             })
           );
+        };
+
+
+        sockets.onmessage = (event) => {
+
+          const data = JSON.parse(event.data);
+          const message_type = data.type;
+
+          if (!message_type) {
+            return
+          }
+
+          switch (message_type) {
+
+            case "pollResponse":
+              console.log("Poll Response", data.pollData);
+              break;
+            
+
+          }
+
         };
 
 

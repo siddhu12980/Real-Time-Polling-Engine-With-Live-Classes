@@ -18,7 +18,6 @@ interface PoolProps {
         createdAt: string;
         timer: number;
         question: string | null;
-
     };
     sendToTeacher: (message: object) => void;
 }
@@ -65,41 +64,37 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
     }, []);
 
     const handleOptionClick = (option: string) => {
+
         if (isExpired) return;
+
         setSelectedOption(option);
+
         const isCorrect = option === pollData.correctAnswer;
 
         const createdAt = new Date(pollData.createdAt);
+
         const currentTime = Date.now();
 
         const diffInSeconds_float = (currentTime - createdAt.getTime());
 
 
-        // convert to seconds in froentend from milliseconds in teacher ui 
         const diffInSeconds = Math.round(diffInSeconds_float);
 
-
         const message = {
-            type: "pollResponse",
-            pollId: pollData.id || "unknown",
-            studentId: "student123",
+            id: pollData.id || "1",
+            studentId: "u1",
             answer: option,
             timeTaken: diffInSeconds,
             isCorrect,
         };
+
         sendToTeacher(message);
 
-        setShowFeedback(true);
 
-        const timer = setTimeout(() => {
-            setShowFeedback(false);
-        }, 2000);
-
-
-        return () => clearTimeout(timer);
     };
-
+ 
     const handleExpire = () => {
+
         setShowFeedback(true);
 
         setTimeout(() => {
@@ -109,13 +104,13 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
 
         if (selectedOption === null) {
             setIsExpired(true);
+
             const message = {
-                type: "pollResponse",
-                pollId: pollData.id || "unknown",
-                studentId: "student123",
-                answer: "No Response",
+                id: pollData.id || "1",
+                studentId: "u1",
+                answer: "NA",
                 isCorrect: false,
-                timeTaken: null,
+                timeTaken: "NA",
             };
             sendToTeacher(message);
         }
@@ -123,11 +118,9 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
 
     const getOptionStyle = (option: string) => {
         if (selectedOption === option) {
-            return option === pollData.correctAnswer
-                ? "border-green-500 bg-green-50 text-green-700"
-                : "border-red-500 bg-red-50 text-red-700";
+            return "border-gray-500 bg-gray-50 text-black"
         }
-        return "border-gray-300 hover:bg-blue-50 hover:border-blue-500";
+        return "border-white-300  bg-gray-50 hover:bg-blue-50 hover:border-blue-500";
     };
 
 
@@ -174,7 +167,6 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
                 </div>
             </div>
 
-
             {pollData.question && (
 
                 <h2 className="text-lg mx-auto font-semibold text-gray-800 flex-grow pr-4">
@@ -203,11 +195,7 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
                             disabled={!!selectedOption || isExpired}
                         >
                             <span>{option}</span>
-                            {selectedOption === option && (
-                                option === pollData.correctAnswer
-                                    ? <Check className="text-green-500" />
-                                    : <X className="text-red-500" />
-                            )}
+
                             {!selectedOption && <ChevronRight className="text-gray-400" />}
                         </button>
                     ))}

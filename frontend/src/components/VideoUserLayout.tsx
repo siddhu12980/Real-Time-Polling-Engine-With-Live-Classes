@@ -141,7 +141,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
             JSON.stringify({
               type: "receiver",
               roomId: "room1",
-              name: user.userName,
+              name: 'user1',
               id: "u1"
             })
           );
@@ -161,7 +161,6 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
           if (message_type) {
 
             switch (message_type) {
-
               case "startSlide":
                 setChangeScreen(false)
                 setTeacherContent("Slide")
@@ -179,6 +178,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
               case "endBoard":
                 setChangeScreen(true)
                 break
+
 
               case "startPoll":
                 console.log(message_json)
@@ -224,6 +224,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
 
   const renderActiveComponent = () => {
 
+
     switch (activeSection) {
       case 'Chat':
         return <VideoChat ws={socket} roomId='room1' userId='u1' username='user1' />;
@@ -232,9 +233,20 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Pool':
-        return <div className="p-4 bg-gray-300 rounded"><Poll sendToTeacher={(data) => {
-          console.log("Sending to teacher", data)
-        }} pollData={pollData} /></div>;
+        return pollData ?
+          <div className="p-4 bg-gray-300 rounded"><Poll sendToTeacher={(data) => {
+            console.log("Sending Poll Data", data);
+
+            socket!.send(JSON.stringify({
+              type: "pollResponse",
+              roomId: "room1",
+              pollData: data
+            }))
+
+
+          }} pollData={pollData} /></div>
+          :
+          <div className="p-4 bg-gray-300 rounded">No Poll Data</div>
       default:
         return null;
     }

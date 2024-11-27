@@ -301,6 +301,32 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		return nil
 
+	case "pollResponse":
+
+		roomId, ok := message["roomId"].(string)
+
+		if !ok || roomId == "" {
+			return fmt.Errorf("room ID is required")
+		}
+
+		pollData, ok := message["pollData"].(map[string]interface{})
+
+		if !ok {
+			return fmt.Errorf("poll data is required")
+		}
+
+		pollId, ok := pollData["id"].(string)
+
+		if !ok || pollId == "" {
+			return fmt.Errorf("poll ID is required")
+		}
+
+		if !s.RoomExists(roomId) {
+			return fmt.Errorf("Room does not exist")
+		}
+
+		return s.BroadCastMessage(roomId, message, conn)
+
 	case "startSlide":
 
 		roomId, ok := message["roomId"].(string)
