@@ -21,11 +21,12 @@ type Poll struct {
 }
 
 type pollResponse struct {
-	Id        string `json:"id"`
-	RoomId    string `json:"roomId"`
-	UserId    string `json:"userId"`
-	IsCorrect bool   `json:"isCorrect"`
-	Answer    string `json:"answer"`
+	Id          string    `json:"id"`
+	RoomId      string    `json:"roomId"`
+	UserId      string    `json:"userId"`
+	IsCorrect   bool      `json:"isCorrect"`
+	Answer      string    `json:"answer"`
+	SubmittedAt time.Time `json:"submittedAt"`
 }
 
 type RoomPollManager struct {
@@ -34,47 +35,30 @@ type RoomPollManager struct {
 
 func (poll *Poll) GenerateLeaderboard() {
 
-	userTimes := make(map[string]time.Time)
+	type LeaderboardEntry struct {
+		UserId         string
+		SubmissionTime float32
+	}
+
+	var leaderboard []LeaderboardEntry
 
 	for _, response := range poll.PollResponse {
 
 		if response.IsCorrect {
-
-			if recordedTime, exists := userTimes[response.UserId]; exists {
-				// Update if the current submission is earlier
-				if response.SubmittedAt.Before(recordedTime) {
-					userTimes[response.UserId] = response.SubmittedAt
-				}
-			} else {
-				// Record the submission time for the user
-				userTimes[response.UserId] = response.SubmittedAt
-			}
+			leaderboard = append(leaderboard, LeaderboardEntry{
+				UserId:         response.UserId,
+				SubmissionTime: float32(response.SubmittedAt.Sub(poll.StartTime).Seconds()),
+			})
 		}
 	}
 
-	// Convert the map to a slice for sorting
-	type LeaderboardEntry struct {
-		UserId         string
-		SubmissionTime time.Time
-	}
-
-	var leaderboard []LeaderboardEntry
-	for userId, submissionTime := range userTimes {
-		leaderboard = append(leaderboard, LeaderboardEntry{
-			UserId:         userId,
-			SubmissionTime: submissionTime,
-		})
-	}
-
-	// Sort the leaderboard by submission time (ascending)
 	sort.Slice(leaderboard, func(i, j int) bool {
-		return leaderboard[i].SubmissionTime.Before(leaderboard[j].SubmissionTime)
+		return leaderboard[i].SubmissionTime < leaderboard[j].SubmissionTime
 	})
 
-	// Display the leaderboard
 	fmt.Printf("Leaderboard for Poll: %s\n", poll.Id)
 	for rank, entry := range leaderboard {
-		fmt.Printf("Rank %d: User %s, Submission Time: %s\n", rank+1, entry.UserId, entry.SubmissionTime)
+		fmt.Printf("Rank %d: User %s, Submission Time: %f\n", rank+1, entry.UserId, entry.SubmissionTime)
 	}
 }
 
@@ -112,9 +96,15 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer s
 	return false
 }
 
-// manager := RoomPollManager{
+// Manager := RoomPollManager{
 // 	Polls: make(map[string]Poll),
 // }
+
+func StartRoomManager() *RoomPollManager {
+	return &RoomPollManager{
+		Polls: make(map[string]Poll),
+	}
+}
 
 // poll := Poll{
 // 	Id:            "123",
