@@ -92,7 +92,7 @@ const Poll: React.FC<PoolProps> = ({ pollData, sendToTeacher }) => {
 
 
     };
- 
+
     const handleExpire = () => {
 
         setShowFeedback(true);

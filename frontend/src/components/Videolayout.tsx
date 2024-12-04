@@ -160,7 +160,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
             case "pollResponse":
               console.log("Poll Response", data.pollData);
               break;
-            
+
 
           }
 
@@ -208,6 +208,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
       "id": "p1",
       "type": "startPoll",
       "roomId": "room1",
+      "userId": 's1', //TODO change this to usedId
       "pollData": data
     }))
   }

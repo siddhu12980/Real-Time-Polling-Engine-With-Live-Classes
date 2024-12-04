@@ -64,7 +64,7 @@ func (poll *Poll) GenerateLeaderboard() {
 
 func (rpm *RoomPollManager) AddPoll(poll Poll) {
 	rpm.Polls[poll.Id] = poll
-	fmt.Printf("Poll with ID %s added successfully!\n", poll.Id)
+	fmt.Printf("poll with ID %s added successfully!\n %v \n", poll.Id, poll)
 }
 
 func (rpm *RoomPollManager) AddResponse(pollId string, response pollResponse) {
@@ -100,7 +100,7 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer s
 // 	Polls: make(map[string]Poll),
 // }
 
-func StartRoomManager() *RoomPollManager {
+func StartRoomPollManager() *RoomPollManager {
 	return &RoomPollManager{
 		Polls: make(map[string]Poll),
 	}

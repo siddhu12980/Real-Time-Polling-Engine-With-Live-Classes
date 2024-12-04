@@ -3,6 +3,7 @@ package signaling
 import (
 	"fmt"
 	"live/helper"
+	"live/room"
 	"log"
 	"net/http"
 	"time"
@@ -25,16 +26,17 @@ type Room struct {
 }
 
 type SignalingServer struct {
-	rooms    map[string]*Room
-	upgrader websocket.Upgrader
+	rooms       map[string]*Room
+	upgrader    websocket.Upgrader
+	pollManager *room.RoomPollManager
 }
 
 type Message map[string]interface{}
 
 func NewSignalingServer() *SignalingServer {
-
 	return &SignalingServer{
-		rooms: make(map[string]*Room),
+		rooms:       make(map[string]*Room),
+		pollManager: room.StartRoomPollManager(),
 
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -282,6 +284,42 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 		if !s.RoomExists(roomId) {
 			return fmt.Errorf("Room does not exist")
 		}
+
+		userId, ok := message["roomId"].(string)
+
+		if !ok || userId == "" {
+			return fmt.Errorf("user ID is required")
+		}
+
+		// ma sanga id xa , roomId xa , pollData xa
+
+		// 		interface PoolProps {
+		//     pollData: {
+		//         id?: string;
+		//         type: PollType;
+		//         correctAnswer: string;
+		//         createdAt: string;
+		//         timer: number;
+		//         question: string | null;
+		//     };
+		// }
+
+		//TODO
+		//match PollProps from frontend
+
+		poll := room.Poll{
+			Id:            id,
+			RoomId:        roomId,
+			CreatorId:     userId,
+			IsActive:      false,
+			StartTime:     time.Now(),
+			Duration:      int(pollData["timer"].(int)),
+			EndTime:       time.Now().Add(time.Duration(int(pollData["duration"].(float64))) * time.Second),
+			CorrectAnswer: pollData["correctAnswer"].(string),
+			PollQuestion:  pollData["pollQuestion"].(string),
+			PollOptions:   pollData["pollOptions"].([]string),
+		}
+		s.pollManager.AddPoll(poll)
 
 		// Broadcast the poll to all connected peers in the room
 		broadcastMessage := map[string]interface{}{

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { PenLine, Timer, Plus, Minus, CheckCircle2, X } from "lucide-react";
-import { create } from 'zustand';
+
 
 const PollType = {
   FIVE_OPTION: "5_option",
@@ -9,7 +9,7 @@ const PollType = {
   TRUE_FALSE: "true_false"
 };
 
-const CreatePoll = ({ onClose, onSubmit }:any) => {
+const CreatePoll = ({ onClose, onSubmit }: any) => {
   const [pollType, setPollType] = useState(PollType.FOUR_OPTION);
   const [correctAnswer, setCorrectAnswer] = useState('A');
   const [timer, setTimer] = useState(15);
@@ -41,7 +41,7 @@ const CreatePoll = ({ onClose, onSubmit }:any) => {
   const handleSubmit = () => {
     onSubmit({
       type: pollType,
-      correctAnswer,
+      CorrectAnswer:correctAnswer,
       createdAt: new Date().toISOString(),
       timer,
       question: question.trim() || null
@@ -111,7 +111,7 @@ const CreatePoll = ({ onClose, onSubmit }:any) => {
             ))}
           </div>
         </div>
-        
+
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Timer (seconds)</label>
@@ -130,20 +130,20 @@ const CreatePoll = ({ onClose, onSubmit }:any) => {
               className="p-2.5 rounded-md border border-gray-300 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
               onClick={() => handleTimerChange(5)}
             >
-              <Plus  color='black' className="h-5 w-5" />
+              <Plus color='black' className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         <div className="space-y-3 pt-2">
-          <button 
+          <button
             className="w-full px-4 py-3 text-base sm:text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center transition-colors"
             onClick={handleSubmit}
           >
             <CheckCircle2 className="mr-2 h-5 w-5" />
             Start Poll
           </button>
-          <button 
+          <button
             className="w-full px-4 py-3 text-base sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center transition-colors"
             onClick={onClose}
           >
