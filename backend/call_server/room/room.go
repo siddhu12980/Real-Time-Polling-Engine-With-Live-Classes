@@ -33,7 +33,7 @@ type RoomPollManager struct {
 	Polls map[string]Poll
 }
 
-func (poll *Poll) GenerateLeaderboard() {
+func (rpm *RoomPollManager) GenerateLeaderboard(id string) {
 
 	type LeaderboardEntry struct {
 		UserId         string
@@ -41,6 +41,15 @@ func (poll *Poll) GenerateLeaderboard() {
 	}
 
 	var leaderboard []LeaderboardEntry
+
+	poll, exists := rpm.Polls[id]
+
+	if !exists {
+		err := fmt.Errorf("poll id doesnot  exists")
+		fmt.Println(err)
+	}
+
+	fmt.Printf("Total Response in this poll %v", poll.PollResponse)
 
 	for _, response := range poll.PollResponse {
 
@@ -51,6 +60,8 @@ func (poll *Poll) GenerateLeaderboard() {
 			})
 		}
 	}
+
+	fmt.Printf("LeardBoard Entry %v", leaderboard)
 
 	sort.Slice(leaderboard, func(i, j int) bool {
 		return leaderboard[i].SubmissionTime < leaderboard[j].SubmissionTime
@@ -63,22 +74,33 @@ func (poll *Poll) GenerateLeaderboard() {
 }
 
 func (rpm *RoomPollManager) AddPoll(poll Poll) {
+
+	if _, exists := rpm.Polls[poll.Id]; exists {
+		println("Poll with same id already exits ")
+		err := fmt.Errorf("poll id already exists")
+		fmt.Println(err)
+	}
+
 	rpm.Polls[poll.Id] = poll
+
 	fmt.Printf("poll with ID %s added successfully!\n %v \n", poll.Id, poll)
+
 }
 
 func (rpm *RoomPollManager) AddResponse(pollId string, response pollResponse) {
-
 	if poll, exists := rpm.Polls[pollId]; exists {
 		poll.PollResponse = append(poll.PollResponse, response)
-		rpm.Polls[pollId] = poll
+		rpm.Polls[poll.Id] = poll // cause i am using copy refrence not a pointer refreence
+
 		fmt.Printf("Response from user %s added successfully to poll %s!\n", response.UserId, pollId)
+
 	} else {
 		fmt.Printf("Poll with ID %s not found!\n", pollId)
 	}
 }
 
 func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer string) bool {
+
 	if poll, exists := rpm.Polls[pollId]; exists {
 		isCorrect := (answer == poll.CorrectAnswer)
 
@@ -90,15 +112,13 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer s
 			Answer:    answer,
 		}
 		rpm.AddResponse(pollId, response)
+
+		fmt.Printf("Response added for user %v , \n response data %v \n", userId, response)
 		return isCorrect
 	}
 	fmt.Printf("Poll with ID %s not found!\n", pollId)
 	return false
 }
-
-// Manager := RoomPollManager{
-// 	Polls: make(map[string]Poll),
-// }
 
 func StartRoomPollManager() *RoomPollManager {
 	return &RoomPollManager{
@@ -106,29 +126,29 @@ func StartRoomPollManager() *RoomPollManager {
 	}
 }
 
-// poll := Poll{
-// 	Id:            "123",
-// 	RoomId:        "room1",
-// 	CreatorId:     "user1",
-// 	IsActive:      true,
-// 	StartTime:     time.Now(),
-// 	Duration:      30,
-// 	EndTime:       time.Now().Add(30 * time.Minute),
-// 	CorrectAnswer: "Go",
-// 	PollQuestion:  "What's the best programming language?",
-// 	PollOptions:   []string{"Go", "Python", "JavaScript", "Java"},
-// }
+func start() {
 
-// User response to the poll
-// userId := "user2"
-// answer := "Go"
+	manager := StartRoomPollManager()
 
-// Check if the user's answer is correct and add the response
-// isCorrect := manager.CheckResponse(poll.Id, userId, answer)
+	poll := Poll{
+		Id:            "123",
+		RoomId:        "room1",
+		CreatorId:     "user1",
+		IsActive:      true,
+		StartTime:     time.Now(),
+		Duration:      30,
+		EndTime:       time.Now().Add(30 * time.Minute),
+		CorrectAnswer: "Go",
+		PollQuestion:  "What's the best programming language?",
+		PollOptions:   []string{"Go", "Python", "JavaScript", "Java"},
+	}
 
-// Output whether the answer was correct
-// if isCorrect {
-// 	fmt.Printf("The answer '%s' is correct for poll %s!\n", answer, poll.Id)
-// } else {
-// 	fmt.Printf("The answer '%s' is incorrect for poll %s.\n", answer, poll.Id)
-// }
+	manager.AddPoll(poll)
+
+	manager.CheckResponse(poll.Id, "user2", "Go")
+	manager.CheckResponse(poll.Id, "user1", "Go")
+	manager.CheckResponse(poll.Id, "user3", "JS")
+
+	manager.GenerateLeaderboard(poll.Id)
+
+}
