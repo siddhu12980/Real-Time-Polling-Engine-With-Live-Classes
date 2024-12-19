@@ -126,29 +126,26 @@ func StartRoomPollManager() *RoomPollManager {
 	}
 }
 
-func start() {
+// func start() {
+// 	manager := StartRoomPollManager()
+// 	poll := Poll{
+// 		Id:            "123",
+// 		RoomId:        "room1",
+// 		CreatorId:     "user1",
+// 		IsActive:      true,
+// 		StartTime:     time.Now(),
+// 		Duration:      30,
+// 		EndTime:       time.Now().Add(30 * time.Minute),
+// 		CorrectAnswer: "Go",
+// 		PollQuestion:  "What's the best programming language?",
+// 		PollOptions:   []string{"Go", "Python", "JavaScript", "Java"},
+// 	}
+// 	manager.AddPoll(poll)
 
-	manager := StartRoomPollManager()
+// 	manager.CheckResponse(poll.Id, "user2", "Go")
+// 	manager.CheckResponse(poll.Id, "user1", "Go")
+// 	manager.CheckResponse(poll.Id, "user3", "JS")
 
-	poll := Poll{
-		Id:            "123",
-		RoomId:        "room1",
-		CreatorId:     "user1",
-		IsActive:      true,
-		StartTime:     time.Now(),
-		Duration:      30,
-		EndTime:       time.Now().Add(30 * time.Minute),
-		CorrectAnswer: "Go",
-		PollQuestion:  "What's the best programming language?",
-		PollOptions:   []string{"Go", "Python", "JavaScript", "Java"},
-	}
+// 	manager.GenerateLeaderboard(poll.Id)
 
-	manager.AddPoll(poll)
-
-	manager.CheckResponse(poll.Id, "user2", "Go")
-	manager.CheckResponse(poll.Id, "user1", "Go")
-	manager.CheckResponse(poll.Id, "user3", "JS")
-
-	manager.GenerateLeaderboard(poll.Id)
-
-}
+// }

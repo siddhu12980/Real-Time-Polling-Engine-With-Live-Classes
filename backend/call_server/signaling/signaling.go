@@ -291,41 +291,50 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("user ID is required")
 		}
 
-		// ma sanga id xa , roomId xa , pollData xa
+		fmt.Print(" \n Poll Data", pollData["PollOptions"])
 
-		// 		interface PoolProps {
-		//     pollData: {
-		//         id?: string;
-		//         type: PollType;
-		//         correctAnswer: string;
-		//         createdAt: string;
-		//         timer: number;
-		//         question: string | null;
-		//     };
-		// }
+		PollOptions := pollData["PollOptions"].([]interface{})
 
-		//TODO
-		//match PollProps from frontend
+		fmt.Print("Poll Options", PollOptions)
+
+		options := make([]string, len(PollOptions))
+
+		for i, option := range PollOptions {
+			options[i] = option.(string)
+		}
 
 		poll := room.Poll{
 			Id:            id,
 			RoomId:        roomId,
 			CreatorId:     userId,
-			IsActive:      false,
+			IsActive:      true,
 			StartTime:     time.Now(),
-			Duration:      int(pollData["timer"].(int)),
-			EndTime:       time.Now().Add(time.Duration(int(pollData["duration"].(float64))) * time.Second),
-			CorrectAnswer: pollData["correctAnswer"].(string),
+			Duration:      int(pollData["timer"].(float64)),
+			EndTime:       time.Now().Add(time.Duration(int(pollData["timer"].(float64))) * time.Second),
+			CorrectAnswer: pollData["CorrectAnswer"].(string),
 			PollQuestion:  pollData["pollQuestion"].(string),
-			PollOptions:   pollData["pollOptions"].([]string),
+			PollOptions:   options,
 		}
+
 		s.pollManager.AddPoll(poll)
 
-		// Broadcast the poll to all connected peers in the room
+		newPollData := map[string]interface{}{
+			"id":           id,
+			"roomId":       roomId,
+			"creatorId":    userId,
+			"isActive":     true,
+			"startTime":    poll.StartTime,
+			"duration":     poll.Duration,
+			"endTime":      poll.EndTime,
+			"pollQuestion": poll.PollQuestion,
+			"pollOptions":  poll.PollOptions,
+			"type":         pollData["type"],
+		}
+
 		broadcastMessage := map[string]interface{}{
 			"id":       id,
 			"type":     "startPoll",
-			"pollData": pollData,
+			"pollData": newPollData,
 			"roomId":   roomId,
 		}
 
@@ -359,11 +368,28 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("poll ID is required")
 		}
 
+		userId, ok := message["userId"].(string)
+
+		if !ok || userId == "" {
+			return fmt.Errorf("user ID is required")
+		}
+
 		if !s.RoomExists(roomId) {
 			return fmt.Errorf("Room does not exist")
 		}
 
-		return s.BroadCastMessage(roomId, message, conn)
+		answer, ok := pollData["answer"].(string)
+
+		if !ok || answer == "" {
+			return fmt.Errorf("answer is required")
+		}
+
+		// return s.BroadCastMessage(roomId, message, conn)
+
+		s.pollManager.CheckResponse(pollId, userId, answer)
+
+		// lets send answer and rank when poll ends not immediately
+		return nil
 
 	case "startSlide":
 
