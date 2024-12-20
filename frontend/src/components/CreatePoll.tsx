@@ -12,7 +12,7 @@ const PollType = {
 const CreatePoll = ({ onClose, onSubmit }: any) => {
   const [pollType, setPollType] = useState(PollType.FOUR_OPTION);
   const [correctAnswer, setCorrectAnswer] = useState('A');
-  const [timer, setTimer] = useState(15);
+  const [timer, setTimer] = useState<number>(15);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [question, setQuestion] = useState('');
 
@@ -41,7 +41,9 @@ const CreatePoll = ({ onClose, onSubmit }: any) => {
   const handleSubmit = () => {
     onSubmit({
       type: pollType,
-      CorrectAnswer:correctAnswer,
+      pollQuestion: question == "" ? "" : question,
+      CorrectAnswer: correctAnswer,
+      PollOptions: getOptionsForType(pollType),
       createdAt: new Date().toISOString(),
       timer,
       question: question.trim() || null

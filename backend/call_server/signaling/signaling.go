@@ -62,11 +62,6 @@ func (s *SignalingServer) RoomExists(roomID string) bool {
 	return exists
 }
 
-func getFormattedTime() string {
-	currentTime := time.Now()
-	return currentTime.Format("2006-01-02 15:04:05")
-}
-
 func (s *SignalingServer) getPeerFromROom(roomID string, userId string, conn *websocket.Conn) (*Peer, error) {
 	rooms, exists := s.rooms[roomID]
 
@@ -130,8 +125,7 @@ func (s *SignalingServer) JoinRoom(roomId string, peer *Peer) error {
 	return nil
 }
 
-func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sender *websocket.Conn) error {
-
+func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sender *websocket.Conn, include bool) error {
 	room, exists := s.rooms[roomId]
 	if !exists {
 		return fmt.Errorf("room %s does not exist", roomId)
@@ -141,6 +135,14 @@ func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sende
 
 	if room.Sender.Conn != sender {
 		room.Sender.safeSend(message)
+	}
+
+	if include && room.Sender.Conn == sender {
+		err := room.Sender.safeSend(message)
+
+		if err != nil {
+			log.Printf("Error broadcasting to sender %s: %v\n", room.Sender.ID, err)
+		}
 	}
 
 	for _, receiver := range *room.Receivers {
@@ -258,7 +260,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		receiver.safeSend(message)
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "startPoll":
 
@@ -299,6 +301,13 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		options := make([]string, len(PollOptions))
 
+		poolType, ok := pollData["type"].(string)
+
+		if !ok || poolType == "" {
+
+			return fmt.Errorf("poll Type not provided")
+		}
+
 		for i, option := range PollOptions {
 			options[i] = option.(string)
 		}
@@ -307,41 +316,45 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			Id:            id,
 			RoomId:        roomId,
 			CreatorId:     userId,
-			IsActive:      true,
+			IsActive:      false,
 			StartTime:     time.Now(),
 			Duration:      int(pollData["timer"].(float64)),
 			EndTime:       time.Now().Add(time.Duration(int(pollData["timer"].(float64))) * time.Second),
 			CorrectAnswer: pollData["CorrectAnswer"].(string),
 			PollQuestion:  pollData["pollQuestion"].(string),
 			PollOptions:   options,
+			Type:          poolType,
 		}
 
 		s.pollManager.AddPoll(poll)
 
-		newPollData := map[string]interface{}{
-			"id":           id,
-			"roomId":       roomId,
-			"creatorId":    userId,
-			"isActive":     true,
-			"startTime":    poll.StartTime,
-			"duration":     poll.Duration,
-			"endTime":      poll.EndTime,
-			"pollQuestion": poll.PollQuestion,
-			"pollOptions":  poll.PollOptions,
-			"type":         pollData["type"],
-		}
+		err := s.pollManager.StartPoll(
+			poll.Id,
 
-		broadcastMessage := map[string]interface{}{
-			"id":       id,
-			"type":     "startPoll",
-			"pollData": newPollData,
-			"roomId":   roomId,
-		}
+			func(result *room.LeaderboardResult, err error) {
+				if err != nil {
+					fmt.Printf("Error ending poll: %v\n", err)
+					return
+				}
 
-		err := s.BroadCastMessage(roomId, broadcastMessage, conn)
+				message := map[string]interface{}{
+					"type":    "pollResult",
+					"pollId":  poll.Id,
+					"results": result,
+				}
+
+				if bErr := s.BroadCastMessage(roomId, message, conn, true); bErr != nil {
+					fmt.Printf("Failed to broadcast poll results: %v\n", bErr)
+				}
+			},
+
+			func(message map[string]interface{}) error {
+				return s.BroadCastMessage(roomId, message, conn, true)
+			},
+		)
 
 		if err != nil {
-			return fmt.Errorf("failed to broadcast poll: %v", err)
+			return fmt.Errorf("failed to start poll: %v", err)
 		}
 
 		log.Printf("Poll started in room %s with ID %s", roomId, id)
@@ -384,8 +397,6 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("answer is required")
 		}
 
-		// return s.BroadCastMessage(roomId, message, conn)
-
 		s.pollManager.CheckResponse(pollId, userId, answer)
 
 		// lets send answer and rank when poll ends not immediately
@@ -415,7 +426,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "startBoard":
 
@@ -442,7 +453,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "endSlide":
 
@@ -469,7 +480,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "endBoard":
 
@@ -496,7 +507,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"sender": room.Sender,
 		}
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "pdf-control":
 
@@ -539,7 +550,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		fmt.Print("\n \n Sending Pdf control message", message)
 
-		return s.BroadCastMessage(roomId, message, conn)
+		return s.BroadCastMessage(roomId, message, conn, false)
 
 	case "chat":
 
@@ -579,7 +590,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			"timestamp": message["timestamp"],
 		}
 
-		return s.BroadCastMessage(roomId, new_message, conn)
+		return s.BroadCastMessage(roomId, new_message, conn, false)
 
 	default:
 		return fmt.Errorf("unknown message type: %s", messageType)
@@ -647,7 +658,7 @@ func (s *SignalingServer) handleDisconnect(conn *websocket.Conn) {
 				"message": msg,
 			}
 
-			s.BroadCastMessage(roomID, message, conn)
+			s.BroadCastMessage(roomID, message, conn, false)
 
 			room.Sender = nil
 			isFound = true
@@ -669,7 +680,7 @@ func (s *SignalingServer) handleDisconnect(conn *websocket.Conn) {
 					message := map[string]interface{}{
 						"message": msg,
 					}
-					s.BroadCastMessage(roomID, message, conn)
+					s.BroadCastMessage(roomID, message, conn, false)
 
 					if len(*room.Receivers) == 1 {
 						log.Printf("Room %s is now empty and will be removed\n", roomID)

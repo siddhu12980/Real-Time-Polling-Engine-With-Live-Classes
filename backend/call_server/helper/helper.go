@@ -13,3 +13,8 @@ func GenerateID() string {
 func GenerateName(role string) string {
 	return fmt.Sprintf("%s_%d", role, time.Now().Unix())
 }
+
+func GetFormattedTime() string {
+	currentTime := time.Now()
+	return currentTime.Format("2006-01-02 15:04:05")
+}

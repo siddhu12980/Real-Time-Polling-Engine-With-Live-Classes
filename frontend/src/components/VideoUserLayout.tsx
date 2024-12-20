@@ -14,9 +14,10 @@ import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { useRecoilState } from 'recoil';
-import { userState } from '../store/userStore';
+import { pollDataState, remainingTimeState, userState } from '../store/userStore';
 import { useParams } from 'react-router-dom';
 import Poll from './Poll';
+import RankingList from './RankingList';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 
@@ -29,6 +30,7 @@ const VideoUserLayout = () => {
 
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useRecoilState(userState);
+
   const params = useParams()
 
   useEffect(() => {
@@ -41,10 +43,12 @@ const VideoUserLayout = () => {
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           name: user.userName,
           room: params.roomId,
         }),
+
       })
         .then(async (response) => {
           const contentType = response.headers.get("content-type");
@@ -85,9 +89,6 @@ const VideoUserLayout = () => {
 
   }, []);
 
-
-
-
   return <>
     {(token) ?
       < LiveKitRoom
@@ -105,10 +106,20 @@ const VideoUserLayout = () => {
 
 }
 
-const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
+const Videolayouts = ({ }: { user: any, roomId: string }) => {
   const [activeSection, setActiveSection] = useState('Chat');
-  const [pollData, setPollData] = useState<any>(null);
   const [socket, setSocket] = useState<WebSocket | null>(null);
+
+  const [pollData, setPollData] = useRecoilState(pollDataState);
+  const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
+
+
+  const handlePollEnd = () => {
+    setPollData(null);
+    setRemainingTime(0);
+    setActiveSection('Chat');
+  };
+
 
   const [changeScreen, setChangeScreen] = useState<boolean>(true);
 
@@ -179,11 +190,19 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
                 setChangeScreen(true)
                 break
 
-
               case "startPoll":
                 console.log(message_json)
                 setPollData((message_json as { pollData: any }).pollData)
+                setRemainingTime((message_json as { pollData: any }).pollData.timer)
                 setActiveSection("Pool")
+                break
+
+              case "pollResult":
+                console.error("Poll Result", message_json)
+                break
+
+
+
             }
 
 
@@ -230,21 +249,30 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
         return <VideoChat ws={socket} roomId='room1' userId='u1' username='user1' />;
       case 'AskQuestions':
         return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
+
+      case 'Rank':
+        return <div className="p-4 bg-gray-300 rounded"> <RankingList userId='u1' rankings={} isTeacher={false} /> </div>;
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Pool':
         return pollData ?
-          <div className="p-4 bg-gray-300 rounded"><Poll sendToTeacher={(data) => {
-            console.log("Sending Poll Data", data);
+          <div className="p-4 bg-gray-300 rounded">
 
-            socket!.send(JSON.stringify({
-              type: "pollResponse",
-              roomId: "room1",
-              pollData: data
-            }))
+            <Poll sendToTeacher={(data) => {
 
+              console.log("Sending Poll Data", data);
 
-          }} pollData={pollData} /></div>
+              socket!.send(JSON.stringify({
+                type: "pollResponse",
+                roomId: "room1",
+                userId: "u1",
+                pollData: data
+              }))
+            }}
+
+              changeLayoutBack={handlePollEnd}
+
+              pollData={pollData} /></div>
           :
           <div className="p-4 bg-gray-300 rounded">No Poll Data</div>
       default:

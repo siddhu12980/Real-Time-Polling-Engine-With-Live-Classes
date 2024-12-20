@@ -34,11 +34,11 @@ const TimerBar: React.FC<TimerBarProps> = ({ durationInSeconds }) => {
         <LoadingBar
 
         containerStyle={{
-          position: 'absolute', // Ensures it is positioned relative to the parent container
+          position: 'absolute', 
           top: 0,
           left: 0,
           width: '100%',
-          height: '5px', // Customize height as needed
+          height: '5px', 
           zIndex: 10,
         }}
 
