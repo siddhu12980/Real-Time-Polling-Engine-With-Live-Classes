@@ -37,11 +37,14 @@ type LeaderboardEntry struct {
 }
 
 type LeaderboardResult struct {
-	PollId           string             `json:"pollId"`
-	TotalUsers       int                `json:"totalUsers"`
-	TotalSubmissions int                `json:"totalSubmissions"` // Total number of submissions
-	TotalCorrect     int                `json:"totalCorrect"`     // Total correct answers
-	Rankings         []LeaderboardEntry `json:"rankings"`
+	PollId            string             `json:"pollId"`
+	TotalUsers        int                `json:"totalUsers"`
+	TotalSubmissions  int                `json:"totalSubmissions"` // Total number of submissions
+	TotalCorrect      int                `json:"totalCorrect"`     // Total correct answers
+	Rankings          []LeaderboardEntry `json:"rankings"`
+	ResponseCount     map[string]int     `json:"responseCount"`
+	CountNotResponded int                `json:"countNotResponded"`
+	CorrectAnswer     string             `json:"correctAnswer"`
 }
 
 type RoomPollManager struct {
@@ -139,10 +142,29 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 		return nil, fmt.Errorf("poll id does not exist")
 	}
 
+	givenOption := poll.PollOptions
+
+	optionCount := make(map[string]int)
+
+	CountNotResponded := 0
+
+	for _, option := range givenOption {
+		optionCount[option] = 0
+	}
+
 	var rankings []LeaderboardEntry
 	correctCount := 0
 
 	for _, response := range poll.PollResponse {
+
+		if response.Answer != "" && response.Answer != "NA" {
+			optionCount[response.Answer]++
+		}
+
+		if response.Answer == "NA" {
+			CountNotResponded++
+		}
+
 		if response.IsCorrect {
 			correctCount++
 			rankings = append(rankings, LeaderboardEntry{
@@ -161,11 +183,14 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 	}
 
 	result := &LeaderboardResult{
-		PollId:           id,
-		TotalUsers:       len(poll.PollResponse),
-		TotalSubmissions: len(poll.PollResponse),
-		TotalCorrect:     correctCount,
-		Rankings:         rankings,
+		PollId:            id,
+		TotalUsers:        len(poll.PollResponse),
+		TotalSubmissions:  len(poll.PollResponse),
+		TotalCorrect:      correctCount,
+		Rankings:          rankings,
+		ResponseCount:     optionCount,
+		CountNotResponded: CountNotResponded,
+		CorrectAnswer:     poll.CorrectAnswer,
 	}
 
 	return result, nil
@@ -195,19 +220,21 @@ func (rpm *RoomPollManager) AddResponse(pollId string, response pollResponse) {
 	}
 }
 
-func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer string) bool {
+func (rpm *RoomPollManager) CheckResponse(pollId string, userId string,
+	answer string,
+
+) (bool, error) {
 
 	if poll, exists := rpm.Polls[pollId]; exists {
 
 		if !poll.IsActive {
 			fmt.Printf("Poll %s is not active!\n", pollId)
-			return false
+			return false, fmt.Errorf("poll is not active")
 		}
 
-		// Check if poll has ended
 		if time.Now().After(poll.EndTime) {
 			fmt.Printf("Poll %s has ended!\n", pollId)
-			return false
+			return false, fmt.Errorf("poll has ended")
 		}
 
 		id := fmt.Sprintf("%s-%s", pollId, userId)
@@ -215,7 +242,7 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer s
 		for _, response := range poll.PollResponse {
 			if response.UserId == userId {
 				fmt.Printf("Response from user %s already exists for poll %s!\n", userId, pollId)
-				return response.IsCorrect
+				return response.IsCorrect, nil
 			}
 		}
 
@@ -230,10 +257,11 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string, answer s
 			SubmittedAt: time.Now(),
 		}
 		rpm.AddResponse(pollId, response)
-		return isCorrect
+		return isCorrect, nil
 	}
 	fmt.Printf("Poll with ID %s not found!\n", pollId)
-	return false
+
+	return false, fmt.Errorf("poll not found")
 }
 
 func StartRoomPollManager() *RoomPollManager {

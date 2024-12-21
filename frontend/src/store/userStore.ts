@@ -10,7 +10,7 @@ export const userState = atom({
     "livekitToken": "",
     "token": "",
     "isteacher": false
-  }, // default value (aka initial value)
+  },
 });
 
 
@@ -21,36 +21,29 @@ enum PollType {
   TRUE_FALSE = "true_false"
 }
 
-interface PollData {
-  id ?: string,
-  type: PollType,
+export interface PollResult {
+  responseCount: { [key: string]: number };
+  correctAnswer: string;
+  totalSubmissions: number;
+  countNotResponded: number;
+  ranking: { userId: string; submissionTime: number; rank: number }[]; 
+  totalCorrect: number;
+}
+
+export interface PollData {
+  id?: string;
+  type: PollType;
   createdAt: string;
   timer: number;
   question: string | null;
-};
+  pollResult: PollResult | null;
+  remainingTime: number | 0;
+}
 
 export const pollDataState = atom<PollData | null>({
-  key: 'pollDataState', // Unique key
-  default: null, // Default poll data (null when no poll is active)
+  key: 'pollDataState',
+  default: null,
 });
 
-export const remainingTimeState = atom({
-  key: 'remainingTimeState', // Unique key
-  default: 0, // Default timer value
-});
 
-//
-// const UserSetter = () => {
-//   const [user, setUser] = useRecoilState(userState);
-//
-//   const updateUserName = () => {
-//     setUser({ ...user, userName: 'JohnDoe' });
-//   };
-//
-//   const updateLivekitToken = () => {
-//     setUser({ ...user, livekitToken: 'newToken123' });
-//   };
-//
-//   const toggleIsTeacher = () => {
-//     setUser({ ...user, isTeacher: !user.isTeacher });
-//   };
+

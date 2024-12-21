@@ -35,11 +35,12 @@ const TimerBar: React.FC<TimerBarProps> = ({ durationInSeconds }) => {
 
         containerStyle={{
           position: 'absolute', 
-          top: 0,
+          top: -1,
           left: 0,
           width: '100%',
+          opacity: 0.5,
           height: '5px', 
-          zIndex: 10,
+
         }}
 
             color={` ${progress < 50 ? 'blue' : progress < 80 ? 'orange' : 'red'}`} 

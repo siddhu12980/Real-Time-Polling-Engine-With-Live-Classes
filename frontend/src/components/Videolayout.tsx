@@ -18,6 +18,7 @@ import { useParams } from 'react-router-dom';
 import { useRecoilState } from 'recoil';
 import { userState } from '../store/userStore';
 import CreatePoll from './CreatePoll';
+import RankingList from './RankingList';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 const apiUrl = 'http://localhost:8080/getToken';
@@ -108,7 +109,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [changeScreen, setChangeScreen] = useState<boolean>(true);
   const [teacherContent, setTeacherContent] = useState<'Slide' | 'Screen' | 'Whiteboard' | 'None'>('None');
-
+  const [pollResult, setPollResult] = useState<any>(null);
 
 
   const trackRef = useTracks([
@@ -157,10 +158,18 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
 
           switch (message_type) {
 
-            case "pollResponse":
-              console.log("Poll Response", data.pollData);
-              break;
 
+            case "pollResult":
+              console.log("Poll Result", data);
+              if (data.results) {
+                setPollResult(data.results)
+
+                setTimeout(() => {
+                  setActiveSection("Rank")
+                }, 1000)
+
+              }
+              break
 
           }
 
@@ -223,8 +232,10 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
         return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
-      case 'Pool':
-        return <div className="p-4 bg-gray-300 rounded">Pool Component</div>;
+      case 'Rank':
+        return <div className="p-4 bg-gray-300 rounded">
+          <RankingList rankings={pollResult.rankings} userId='s1' isTeacher={true} />
+        </div>;
       default:
         return null;
     }
@@ -456,7 +467,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
           <li>
             <button
               className={`w-full text-left p-2 rounded ${activeSection === 'Pool' ? 'bg-gray-400' : ''}`}
-              onClick={() => setActiveSection('Pool')}
+              onClick={() => setActiveSection('Rank')}
             >
               <FaPollH size={24} color='black' />
             </button>

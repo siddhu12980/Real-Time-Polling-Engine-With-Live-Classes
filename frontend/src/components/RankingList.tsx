@@ -5,11 +5,18 @@ type RankingList = {
     submissionTime: number;
 }
 
-const RankingList = ({ rankings, userId, isTeacher = false }: {
-    rankings: { userId: string, rank: number, submissionTime: number }[],
-    userId: string,
-    isTeacher?: boolean
-}) => {
+interface RankingListProps  {
+    rankings: RankingList[] | null;
+    userId: string;
+    isTeacher?: boolean;
+}
+
+const RankingList = ( { rankings, userId ,isTeacher }: RankingListProps   ) => {
+
+    if (rankings === null) {
+        return <p>No rankings available</p>;  // Render something when rankings is null
+      }
+
     const getRankingsToDisplay = () => {
         if (isTeacher) {
             return rankings;
@@ -34,7 +41,7 @@ const RankingList = ({ rankings, userId, isTeacher = false }: {
 
     return (
 
-        <div className="w-full max-w-md mx-auto">
+        <div className="w-full max-w-md mx-auto text-black">
             <div className="bg-white shadow rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Rankings</h2>
                 <div className="space-y-2">
@@ -58,6 +65,8 @@ const RankingList = ({ rankings, userId, isTeacher = false }: {
                 </div>
             </div>
         </div>
+
+      
     );
 };
 

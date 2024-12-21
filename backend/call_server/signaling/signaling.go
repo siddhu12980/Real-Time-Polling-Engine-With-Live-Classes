@@ -163,6 +163,20 @@ func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sende
 	return nil
 }
 
+func scheduleResponse(message map[string]interface{}, conn *websocket.Conn, endTime time.Time) {
+	timeUntilResponse := time.Until(endTime) - 2*time.Second
+
+	if timeUntilResponse > 0 {
+		fmt.Printf("Scheduling Response waiting Time: %v\n", timeUntilResponse)
+		time.Sleep(timeUntilResponse)
+	} else {
+		fmt.Println("Poll has already ended or close to ending, sending response immediately.")
+	}
+
+	fmt.Println("Sending Response")
+	conn.WriteJSON(message)
+}
+
 func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string, message map[string]interface{}) error {
 
 	switch messageType {
@@ -381,6 +395,12 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("poll ID is required")
 		}
 
+		poll, exists := s.pollManager.Polls[pollId]
+
+		if !exists {
+			return fmt.Errorf("poll %s not found", pollId)
+		}
+
 		userId, ok := message["userId"].(string)
 
 		if !ok || userId == "" {
@@ -397,9 +417,24 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("answer is required")
 		}
 
-		s.pollManager.CheckResponse(pollId, userId, answer)
+		result, err := s.pollManager.CheckResponse(pollId, userId, answer)
+
+		message := map[string]interface{}{
+			"type":      "pollAnswerCheck",
+			"pollId":    pollId,
+			"userId":    userId,
+			"IsCorrect": result,
+		}
 
 		// lets send answer and rank when poll ends not immediately
+		// Temporarily fixing the issue by sending the response to the user as result
+
+		if err != nil {
+			fmt.Printf("failed to check response: %v", err)
+		} else {
+			go scheduleResponse(message, conn, poll.EndTime)
+		}
+
 		return nil
 
 	case "startSlide":

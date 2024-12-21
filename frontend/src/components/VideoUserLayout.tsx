@@ -14,10 +14,11 @@ import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { useRecoilState } from 'recoil';
-import { pollDataState, remainingTimeState, userState } from '../store/userStore';
+import { pollDataState, userState } from '../store/userStore';
 import { useParams } from 'react-router-dom';
 import Poll from './Poll';
 import RankingList from './RankingList';
+import { usePollResultSetter } from '../store/hooks';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 
@@ -107,17 +108,22 @@ const VideoUserLayout = () => {
 }
 
 const Videolayouts = ({ }: { user: any, roomId: string }) => {
+
   const [activeSection, setActiveSection] = useState('Chat');
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [pollAnswerCheck, setPollAnswerCheck] = useState<boolean | null>(null);
+
+  const pollSetter = usePollResultSetter();
 
   const [pollData, setPollData] = useRecoilState(pollDataState);
-  const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
 
 
   const handlePollEnd = () => {
-    setPollData(null);
-    setRemainingTime(0);
-    setActiveSection('Chat');
+    console.log("Poll Ended Erasing Data");
+    // setPollData(null);
+    pollSetter.updatePollData({ remainingTime: 0 });
+
+
   };
 
 
@@ -192,16 +198,39 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
               case "startPoll":
                 console.log(message_json)
+
+                if (pollDataState != null) {
+                  console.log("Poll Already Active")
+                  setPollData(null)
+
+                }
+
+
+
                 setPollData((message_json as { pollData: any }).pollData)
-                setRemainingTime((message_json as { pollData: any }).pollData.timer)
+
+                // setRemainingTime((message_json as { pollData: any }).pollData.timer)
+                pollSetter.updatePollData((message_json as { pollData: any }).pollData.timer)
+
                 setActiveSection("Pool")
+                break
+
+
+
+
+              case "pollAnswerCheck":
+                setPollAnswerCheck(message_json.IsCorrect)
                 break
 
               case "pollResult":
                 console.error("Poll Result", message_json)
+
+                // setPollResult(message_json.results)
+
+
+
+
                 break
-
-
 
             }
 
@@ -239,42 +268,54 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
   }, [shareTrackRef]);
 
 
+  function handleRankingScreenSwitch() {
+    setPollData(null);
+    setActiveSection("Rank");
+  }
+
+
 
 
   const renderActiveComponent = () => {
-
 
     switch (activeSection) {
       case 'Chat':
         return <VideoChat ws={socket} roomId='room1' userId='u1' username='user1' />;
       case 'AskQuestions':
         return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
-
       case 'Rank':
-        return <div className="p-4 bg-gray-300 rounded"> <RankingList userId='u1' rankings={} isTeacher={false} /> </div>;
+        return <div className="p-4 bg-gray-300 rounded">
+          <RankingList userId='u1' rankings={pollData?.pollResult?.ranking ?? null} isTeacher={false} /> </div>;
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Pool':
         return pollData ?
           <div className="p-4 bg-gray-300 rounded">
 
-            <Poll sendToTeacher={(data) => {
+            <Poll
+              handleRanking={handleRankingScreenSwitch}
+              AnswerCheck={pollAnswerCheck}
+              sendToTeacher={(data) => {
+                console.log("Sending Poll Data", data);
 
-              console.log("Sending Poll Data", data);
-
-              socket!.send(JSON.stringify({
-                type: "pollResponse",
-                roomId: "room1",
-                userId: "u1",
-                pollData: data
-              }))
-            }}
+                socket!.send(JSON.stringify({
+                  type: "pollResponse",
+                  roomId: "room1",
+                  userId: "u1",
+                  pollData: data
+                }))
+              }}
 
               changeLayoutBack={handlePollEnd}
 
-              pollData={pollData} /></div>
+            />
+
+
+
+          </div>
           :
           <div className="p-4 bg-gray-300 rounded">No Poll Data</div>
+
       default:
         return null;
     }
@@ -389,6 +430,18 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
               <FaPollH size={24} color='black' />
             </button>
           </li>
+
+          <li>
+            <button
+              className={`w-full text-left p-2 rounded ${activeSection === 'Pool' ? 'bg-gray-400' : ''}`}
+              onClick={() => setActiveSection('Rank')}
+            >
+              <FaPollH size={24} color='black' />
+            </button>
+          </li>
+
+
+
         </ul>
       </div>
     </div>

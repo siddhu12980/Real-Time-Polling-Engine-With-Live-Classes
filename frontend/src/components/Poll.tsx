@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ChevronRight, Clock } from "lucide-react";
 import TimerBar from "./TimerBar";
 import AnswerFeedback from "./AnswerFeedback";
 import { useRecoilState } from "recoil";
-import { pollDataState, remainingTimeState } from "../store/userStore";
+import { pollDataState } from "../store/userStore";
+import { usePollResultSetter } from "../store/hooks";
 
 enum PollType {
     FOUR_OPTION = "4_option",
@@ -12,94 +13,46 @@ enum PollType {
     TRUE_FALSE = "true_false"
 }
 
+
 interface PollProps {
-    pollData: {
-        id?: string;
-        type: PollType;
-        createdAt: string;
-        timer: number;
-        question: string | null;
-    };
     sendToTeacher: (message: object) => void;
     changeLayoutBack: () => void;
+    handleRanking: () => void;
+    AnswerCheck: boolean | null;
 }
 
-const Poll: React.FC<PollProps> = ({ sendToTeacher, changeLayoutBack }) => {
+const Poll: React.FC<PollProps> = ({ 
+    sendToTeacher, 
+    changeLayoutBack, 
+    AnswerCheck, 
+    handleRanking, 
+}) => {
     const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [isExpired, setIsExpired] = useState(false);
-    const [options, setOptions] = useState<string[]>([]);
     const [showFeedback, setShowFeedback] = useState<boolean>(false);
     const [pollData] = useRecoilState(pollDataState);
-    const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
+    const pollSetter = usePollResultSetter();
+    
 
-    // Initialize options when pollData changes
-    useEffect(() => {
-        if (!pollData) {
-            changeLayoutBack();
-            return;
+
+    const options = useMemo(() => {
+        if (!pollData) return [];
+        
+        switch (pollData.type) {
+            case PollType.FIVE_OPTION:
+                return ['A', 'B', 'C', 'D', 'E'];
+            case PollType.FOUR_OPTION:
+                return ['A', 'B', 'C', 'D'];
+            case PollType.THREE_OPTION:
+                return ['A', 'B', 'C'];
+            case PollType.TRUE_FALSE:
+                return ['True', 'False'];
+            default:
+                return ['A', 'B', 'C', 'D'];
         }
+    }, [pollData?.type]);
 
-        const generateOptions = (type: PollType) => {
-            switch (type) {
-                case PollType.FIVE_OPTION:
-                    return ['A', 'B', 'C', 'D', 'E'];
-                case PollType.FOUR_OPTION:
-                    return ['A', 'B', 'C', 'D'];
-                case PollType.THREE_OPTION:
-                    return ['A', 'B', 'C'];
-                case PollType.TRUE_FALSE:
-                    return ['True', 'False'];
-                default:
-                    return ['A', 'B', 'C', 'D'];
-            }
-        };
-
-        setOptions(generateOptions(pollData.type));
-    }, [pollData, changeLayoutBack]);
-
-    // Handle timer
-    useEffect(() => {
-        if (!pollData) return;
-
-        if (remainingTime > 0) {
-            const timer = setInterval(() => {
-                setRemainingTime((prev) => {
-                    const newTime = prev - 1;
-                    if (newTime <= 0) {
-                        clearInterval(timer);
-                        setIsExpired(true);
-                    }
-                    return Math.max(0, newTime);
-                });
-            }, 1000);
-
-            return () => clearInterval(timer);
-        } else {
-            setIsExpired(true);
-        }
-    }, [pollData, remainingTime, setRemainingTime]);
-
-    // Handle expiration
-    useEffect(() => {
-        if (isExpired && !showFeedback) {
-            handleExpire();
-        }
-    }, [isExpired, showFeedback]);
-
-    const handleOptionClick = (option: string) => {
-        if (isExpired || selectedOption) return;
-
-        setSelectedOption(option);
-        sendToTeacher({
-            id: pollData?.id || "1",
-            userId: "u1",
-            answer: option,
-        });
-    };
-
-    const handleExpire = () => {
-        setShowFeedback(true);
-
+    const handleExpire = useCallback(() => {
         if (selectedOption === null) {
             sendToTeacher({
                 id: pollData?.id || "1",
@@ -108,20 +61,82 @@ const Poll: React.FC<PollProps> = ({ sendToTeacher, changeLayoutBack }) => {
             });
         }
 
+        setShowFeedback(true);
+
         setTimeout(() => {
             setShowFeedback(false);
             changeLayoutBack();
         }, 2000);
-    };
+    }, [selectedOption, pollData?.id, sendToTeacher, changeLayoutBack]);
 
-    const getOptionStyle = (option: string) => {
-        if (selectedOption === option) {
-            return "border-gray-500 bg-gray-50 text-black";
+    useEffect(() => {
+        if (!pollData) {
+            changeLayoutBack();
+            return;
         }
-        return "border-white-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-500";
-    };
+    }, [pollData, changeLayoutBack]);
 
-    const renderStatusMessage = () => {
+    useEffect(() => {
+        if (!pollData || pollData.remainingTime <= 0) {
+            setIsExpired(true);
+            if (pollData!.remainingTime <= 0) handleExpire();
+            return;
+        }
+
+        const timer = setInterval(() => {
+
+            // setRemainingTime((prev) => {
+            //     const newTime = prev - 1;
+            //     if (newTime <= 0) {
+            //         clearInterval(timer);
+            //         setIsExpired(true);
+            //         handleExpire();
+            //     }
+
+            //     return Math.max(0, newTime);
+            // });
+
+
+            const newTime =  pollData.remainingTime - 1
+
+            if(newTime <= 0) {
+                clearInterval(timer);
+                setIsExpired(true);
+                handleExpire();
+            }
+
+            pollSetter.updatePollData({
+                ...pollData,
+                remainingTime: Math.max(0, pollData.remainingTime ),
+            });
+
+
+        }, 1000);
+
+
+
+        return () => clearInterval(timer);
+    }, [pollData, handleExpire]);
+
+    const handleOptionClick = useCallback((option: string) => {
+        if (isExpired) return;
+
+        setSelectedOption(option);
+        sendToTeacher({
+            id: pollData?.id || "1",
+            userId: "u1",
+            answer: option,
+        });
+    }, [isExpired, pollData?.id, sendToTeacher]);
+
+    const getOptionStyle = useCallback((option: string) => {
+        if (selectedOption === option) {
+            return "border-gray-500 bg-gray-100 text-black";
+        }
+        return "border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-500";
+    }, [selectedOption]);
+
+    const renderStatusMessage = useCallback(() => {
         if (isExpired && selectedOption === null) {
             return (
                 <div className="flex items-center justify-center text-red-500">
@@ -130,63 +145,94 @@ const Poll: React.FC<PollProps> = ({ sendToTeacher, changeLayoutBack }) => {
             );
         }
 
-        if (selectedOption) {
+        if (selectedOption && AnswerCheck !== null) {
             return (
                 <div className="flex items-center justify-center">
-                    <AnswerFeedback state="wrong" />
+                    <AnswerFeedback state={AnswerCheck ? "correct" : "wrong"} />
                 </div>
             );
         }
 
-        return null;
-    };
+        return (
+            <div className="flex items-center justify-center text-gray-500">
+                <span className="animate-pulse">Waiting for results...</span>
+            </div>
+        );
+    }, [isExpired, selectedOption, AnswerCheck]);
 
     if (!pollData) return null;
 
     return (
-        <div className="max-w-sm mx-auto bg-white shadow-md rounded-lg overflow-hidden p-4 md:p-6 w-full flex flex-col gap-4 relative">
-            <div className="flex items-center justify-between border-b-2 pb-2 px-2">
-                <h2 className="text-lg font-semibold text-gray-800 flex-grow pr-4">
-                    Poll {pollData.id?.[0]}
-                </h2>
-                <div className="flex items-center text-gray-500">
-                    <Clock className="mr-2 w-5 h-5" />
-                    <span className="text-sm font-medium">
-                        {remainingTime}s
-                    </span>
+        <div className="max-w-2xl mx-auto p-4 ">
+            <div className="flex flex-col gap-6 relative">
+            <TimerBar  durationInSeconds={pollData.timer} />
+                <div className="bg-white shadow-lg rounded-xl overflow-hidden p-6 w-full flex flex-col gap-4 ">
+
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-4 ">
+
+                   
+                        <h2 className="text-xl font-bold text-gray-800">
+                            Poll {pollData.id?.[0]}
+                        </h2>
+                        <div className="flex items-center text-gray-600 bg-gray-50 px-4 py-2 rounded-full">
+                            <Clock className="mr-2 w-4 h-4" />
+                            <span className="font-medium">
+                                { pollData.remainingTime}s
+                            </span>
+                        </div>
+                    </div>
+
+                    {pollData.question && (
+                        <h3 className="text-lg text-gray-700 font-medium">
+                            {pollData.question}
+                        </h3>
+                    )}
+
+
+                    {showFeedback ? (
+                        <div className="h-40 flex items-center justify-center">
+                            {renderStatusMessage()}
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {options.map((option) => (
+                                <button
+                                    key={option}
+                                    className={`
+                                        w-full text-left text-black p-4 rounded-lg border-2 transition-all duration-200 
+                                        flex items-center justify-between
+                                        ${getOptionStyle(option)}
+                                        ${pollData.pollResult?.correctAnswer === option ? 'border-green-500 bg-green-50' : ''}
+                                        ${pollData.pollResult && pollData.pollResult.correctAnswer !== option ? 'border-red-100' : ''}
+                                        ${(selectedOption || isExpired) ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}
+                                    `}
+                                    onClick={() => handleOptionClick(option)}
+                                    disabled={!!selectedOption || isExpired}
+                                >
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="font-medium">{option}</span>
+                                        {pollData.pollResult && (
+                                            <span className="text-sm text-gray-600">
+                                                {((pollData.pollResult.responseCount[option] || 0) / pollData.pollResult.totalSubmissions * 100).toFixed(1)}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    {!selectedOption && !pollData.pollResult && (
+                                        <ChevronRight className="text-gray-400 w-5 h-5" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
+
+                <button
+                    className="w-full bg-black text-white text-xl font-semibold py-4 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+                    onClick={handleRanking}
+                >
+                    Show Ranking
+                </button>
             </div>
-
-            {pollData.question && (
-                <h2 className="text-lg mx-auto font-semibold text-gray-800 flex-grow pr-4">
-                    {pollData.question}
-                </h2>
-            )}
-
-            <TimerBar durationInSeconds={pollData.timer} />
-
-            {showFeedback ? (
-                renderStatusMessage()
-            ) : (
-                <div className="space-y-3">
-                    {options.map((option, index) => (
-                        <button
-                            key={index}
-                            className={`
-                                w-full text-left p-3 rounded-lg border-2 text-black transition-all duration-200 
-                                flex items-center justify-between
-                                ${getOptionStyle(option)}
-                                ${(selectedOption || isExpired) ? 'cursor-not-allowed' : 'cursor-pointer'}
-                            `}
-                            onClick={() => handleOptionClick(option)}
-                            disabled={!!selectedOption || isExpired}
-                        >
-                            <span>{option}</span>
-                            {!selectedOption && <ChevronRight className="text-gray-400" />}
-                        </button>
-                    ))}
-                </div>
-            )}
         </div>
     );
 };
