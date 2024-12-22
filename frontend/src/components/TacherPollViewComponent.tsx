@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import {  Clock } from "lucide-react";
 import TimerBar from "./TimerBar";
-import AnswerFeedback from "./AnswerFeedback";
 import { useRecoilState } from "recoil";
 import { pollDataState, remainingTimeState } from "../store/userStore";
 
@@ -13,30 +12,25 @@ enum PollType {
 }
 
 
-interface PollProps {
-    sendToTeacher: (message: object) => void;
+interface TeacherPollProps {
     changeLayoutBack: () => void;
     handleRanking: () => void;
-    AnswerCheck: boolean | null;
 }
 
-const Poll: React.FC<PollProps> = ({ 
-    sendToTeacher, 
-    changeLayoutBack, 
-    AnswerCheck, 
-    handleRanking, 
+const TacherPollViewComponent: React.FC<TeacherPollProps> = ({
+    changeLayoutBack,
+    handleRanking,
 }) => {
-    const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [isExpired, setIsExpired] = useState(false);
     const [showFeedback, setShowFeedback] = useState<boolean>(false);
-    const [pollData,setPollData] = useRecoilState(pollDataState);
+    const [pollData, setPollData] = useRecoilState(pollDataState);
     const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
-    
+
 
 
     const options = useMemo(() => {
         if (!pollData) return [];
-        
+
         switch (pollData.type) {
             case PollType.FIVE_OPTION:
                 return ['A', 'B', 'C', 'D', 'E'];
@@ -52,13 +46,6 @@ const Poll: React.FC<PollProps> = ({
     }, [pollData?.type]);
 
     const handleExpire = useCallback(() => {
-        if (selectedOption === null) {
-            sendToTeacher({
-                id: pollData?.id || "1",
-                studentId: "u1",
-                answer: "NA",
-            });
-        }
 
         setShowFeedback(true);
 
@@ -66,14 +53,15 @@ const Poll: React.FC<PollProps> = ({
             setShowFeedback(false);
             changeLayoutBack();
         }, 2000);
-    }, [selectedOption, pollData?.id, sendToTeacher, changeLayoutBack]);
+
+    }, [pollData?.id, changeLayoutBack]);
 
     useEffect(() => {
         if (!pollData) {
             changeLayoutBack();
             return;
         }
-    }, [pollData, changeLayoutBack ]);
+    }, [pollData, changeLayoutBack]);
 
     useEffect(() => {
         if (!pollData || remainingTime <= 0) {
@@ -102,68 +90,46 @@ const Poll: React.FC<PollProps> = ({
 
 
         return () => clearInterval(timer);
-    }, [pollData, handleExpire , remainingTime, setRemainingTime]);
+    }, [pollData, handleExpire, remainingTime, setRemainingTime]);
 
-    const handleOptionClick = useCallback((option: string) => {
-        if (isExpired) return;
 
-        setSelectedOption(option);
-        sendToTeacher({
-            id: pollData?.id || "1",
-            userId: "u1",
-            answer: option,
-        });
-    }, [isExpired, pollData?.id, sendToTeacher]);
 
-    const getOptionStyle = useCallback((option: string) => {
-        if (selectedOption === option) {
-            return "border-gray-500 bg-gray-100 text-black";
-        }
-        return "border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-500";
-    }, [selectedOption]);
+    // const getOptionStyle = useCallback((option: string) => {
+    //     if (selectedOption === option) {
+    //         return "border-gray-500 bg-gray-100 text-black";
+    //     }
+    //     return "border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-500";
+    // }, [selectedOption]);
 
     const renderStatusMessage = useCallback(() => {
-        if (isExpired && selectedOption === null) {
+        if (isExpired) {
             return (
                 <div className="flex items-center justify-center text-red-500">
-                    <AnswerFeedback state="unanswered" />
+                    <span className="font-semibold text-lg">Poll Completed!</span>
                 </div>
             );
         }
 
-        if (selectedOption && AnswerCheck !== null) {
-            return (
-                <div className="flex items-center justify-center">
-                    <AnswerFeedback state={AnswerCheck ? "correct" : "wrong"} />
-                </div>
-            );
-        }
-
-        return (
-            <div className="flex items-center justify-center text-gray-500">
-                <span className="animate-pulse">Waiting for results...</span>
-            </div>
-        );
-    }, [isExpired, selectedOption, AnswerCheck]);
+    }, [isExpired]);
 
     if (!pollData) return null;
 
     return (
         <div className="max-w-2xl mx-auto p-4 ">
             <div className="flex flex-col gap-6 relative">
-            <TimerBar  durationInSeconds={pollData.timer} />
+                <TimerBar durationInSeconds={pollData.timer} />
                 <div className="bg-white shadow-lg rounded-xl overflow-hidden p-6 w-full flex flex-col gap-4 ">
 
                     <div className="flex items-center justify-between border-b border-gray-200 pb-4 ">
 
-                   
+
                         <h2 className="text-xl font-bold text-gray-800">
                             Poll {pollData.id?.[0]}
                         </h2>
                         <div className="flex items-center text-gray-600 bg-gray-50 px-4 py-2 rounded-full">
                             <Clock className="mr-2 w-4 h-4" />
                             <span className="font-medium">
-                                { remainingTime}s
+                                {remainingTime}s
                             </span>
                         </div>
                     </div>
@@ -187,13 +153,12 @@ const Poll: React.FC<PollProps> = ({
                                     className={`
                                         w-full text-left text-black p-4 rounded-lg border-2 transition-all duration-200 
                                         flex items-center justify-between
-                                        ${getOptionStyle(option)}
+                                 
+                                        
                                         ${pollData.pollResult?.correctAnswer === option ? 'border-green-500 bg-green-50' : ''}
                                         ${pollData.pollResult && pollData.pollResult.correctAnswer !== option ? 'border-red-100' : ''}
-                                        ${(selectedOption || isExpired) ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}
                                     `}
-                                    onClick={() => handleOptionClick(option)}
-                                    disabled={!!selectedOption || isExpired}
+                                    disabled
                                 >
                                     <div className="flex items-center justify-between w-full">
                                         <span className="font-medium">{option}</span>
@@ -203,9 +168,7 @@ const Poll: React.FC<PollProps> = ({
                                             </span>
                                         )}
                                     </div>
-                                    {!selectedOption && !pollData.pollResult && (
-                                        <ChevronRight className="text-gray-400 w-5 h-5" />
-                                    )}
+
                                 </button>
                             ))}
                         </div>
@@ -223,4 +186,4 @@ const Poll: React.FC<PollProps> = ({
     );
 };
 
-export default Poll;
+export default TacherPollViewComponent;

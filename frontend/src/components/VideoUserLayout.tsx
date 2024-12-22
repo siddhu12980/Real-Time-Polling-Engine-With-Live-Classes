@@ -14,11 +14,10 @@ import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { useRecoilState } from 'recoil';
-import { pollDataState, userState } from '../store/userStore';
+import { pollDataState, remainingTimeState, userState } from '../store/userStore';
 import { useParams } from 'react-router-dom';
 import Poll from './Poll';
 import RankingList from './RankingList';
-import { usePollResultSetter } from '../store/hooks';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 
@@ -113,17 +112,15 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [pollAnswerCheck, setPollAnswerCheck] = useState<boolean | null>(null);
 
-  const pollSetter = usePollResultSetter();
-
   const [pollData, setPollData] = useRecoilState(pollDataState);
+
+  const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
 
 
   const handlePollEnd = () => {
     console.log("Poll Ended Erasing Data");
     // setPollData(null);
-    pollSetter.updatePollData({ remainingTime: 0 });
-
-
+    setRemainingTime(0);
   };
 
 
@@ -209,8 +206,9 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
                 setPollData((message_json as { pollData: any }).pollData)
 
-                // setRemainingTime((message_json as { pollData: any }).pollData.timer)
-                pollSetter.updatePollData((message_json as { pollData: any }).pollData.timer)
+                setRemainingTime((message_json as { pollData: any }).pollData.timer)
+               
+                // pollSetter.updatePollData((message_json as { pollData: any }).pollData.timer)
 
                 setActiveSection("Pool")
                 break
@@ -224,11 +222,15 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
               case "pollResult":
                 console.error("Poll Result", message_json)
+                console.error("Poll Result", message_json.results)
 
                 // setPollResult(message_json.results)
-
-
-
+                setPollData((prev) => {
+                  if (prev) {
+                    return { ...prev, pollResult: message_json.results }
+                  }
+                  return prev
+                })
 
                 break
 
@@ -269,7 +271,7 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
 
   function handleRankingScreenSwitch() {
-    setPollData(null);
+    // setPollData(null);
     setActiveSection("Rank");
   }
 
@@ -284,8 +286,12 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
       case 'AskQuestions':
         return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
       case 'Rank':
-        return <div className="p-4 bg-gray-300 rounded">
-          <RankingList userId='u1' rankings={pollData?.pollResult?.ranking ?? null} isTeacher={false} /> </div>;
+        return pollData && pollData.pollResult ?
+          <div className="p-4 bg-gray-300 rounded">
+            <RankingList userId='u1'  isTeacher={false} /> </div>
+          :
+          <div className="p-4 bg-gray-300 rounded">No Poll Data</div>;
+
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Pool':
@@ -294,6 +300,7 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
             <Poll
               handleRanking={handleRankingScreenSwitch}
+
               AnswerCheck={pollAnswerCheck}
               sendToTeacher={(data) => {
                 console.log("Sending Poll Data", data);

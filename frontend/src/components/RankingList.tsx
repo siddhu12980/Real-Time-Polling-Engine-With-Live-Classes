@@ -1,3 +1,5 @@
+import { useRecoilValue } from "recoil";
+import { pollDataState } from "../store/userStore";
 
 type RankingList = {
     userId: string;
@@ -5,17 +7,26 @@ type RankingList = {
     submissionTime: number;
 }
 
-interface RankingListProps  {
-    rankings: RankingList[] | null;
+interface RankingListProps {
     userId: string;
     isTeacher?: boolean;
 }
 
-const RankingList = ( { rankings, userId ,isTeacher }: RankingListProps   ) => {
+const RankingList = ({ userId, isTeacher }: RankingListProps) => {
+    const pollData = useRecoilValue(pollDataState);
+    console.log("Poll Data inside Rank list", pollData);
+    
 
-    if (rankings === null) {
-        return <p>No rankings available</p>;  // Render something when rankings is null
-      }
+    if (pollData == null || pollData.pollResult == null || pollData.pollResult.rankings == null) {
+        return <p>No rankings available!</p>;  
+    }
+
+    const rankings: RankingList[] = pollData.pollResult.rankings;
+    console.log(" Ranking inside Rank list", rankings);
+
+
+
+
 
     const getRankingsToDisplay = () => {
         if (isTeacher) {
@@ -66,7 +77,7 @@ const RankingList = ( { rankings, userId ,isTeacher }: RankingListProps   ) => {
             </div>
         </div>
 
-      
+
     );
 };
 

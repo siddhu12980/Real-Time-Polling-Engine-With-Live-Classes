@@ -16,9 +16,11 @@ import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { useParams } from 'react-router-dom';
 import { useRecoilState } from 'recoil';
-import { userState } from '../store/userStore';
+import { pollDataState, remainingTimeState, userState } from '../store/userStore';
 import CreatePoll from './CreatePoll';
 import RankingList from './RankingList';
+import TacherPollViewComponent from './TacherPollViewComponent';
+import TeacherPollResult from './TeacherPollResult';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
 const apiUrl = 'http://localhost:8080/getToken';
@@ -109,9 +111,25 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [changeScreen, setChangeScreen] = useState<boolean>(true);
   const [teacherContent, setTeacherContent] = useState<'Slide' | 'Screen' | 'Whiteboard' | 'None'>('None');
-  const [pollResult, setPollResult] = useState<any>(null);
+
+  // const [pollResult, setPollResult] = useState<any>(null);
+  const [pollData, setPollData] = useRecoilState(pollDataState);
+  const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
 
 
+  const handlePollEnd = () => {
+    console.log("Poll Ended Erasing Data");
+    setRemainingTime(0);
+  };
+
+  function handleRankingScreenSwitch() {
+    // setPollData(null);
+    setActiveSection("Rank");
+  }
+
+
+
+  // add recoil for teacher instance 
   const trackRef = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
@@ -159,16 +177,38 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
           switch (message_type) {
 
 
-            case "pollResult":
-              console.log("Poll Result", data);
-              if (data.results) {
-                setPollResult(data.results)
+            case "startPoll":
+              console.log("Poll Started", data);
 
-                setTimeout(() => {
-                  setActiveSection("Rank")
-                }, 1000)
+              setPollData(data.pollData)
+
+              setRemainingTime(data.pollData.timer)
+
+              setTimeout(() => {
+                setActiveSection("Poll")
+              }, 1000)
+
+              break
+
+
+
+            case "pollResult":
+
+              console.log("Poll Result", data);
+
+              if (data.results) {
+
+                console.error("Poll Result in teacher", data.results)
+
+                setPollData((prev) => {
+                  if (prev) {
+                    return { ...prev, pollResult: data.results }
+                  }
+                  return prev
+                })
 
               }
+
               break
 
           }
@@ -217,7 +257,7 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
       "id": "p1",
       "type": "startPoll",
       "roomId": "room1",
-      "userId": 's1', //TODO change this to usedId
+      "userId": 's1',
       "pollData": data
     }))
   }
@@ -228,13 +268,17 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
     switch (activeSection) {
       case 'Chat':
         return <VideoChat ws={socket} roomId='room1' userId='s1' username='sender1' />;
-      case 'AskQuestions':
-        return <div className="p-4 bg-gray-300 rounded">Ask Questions Component</div>;
+      case 'Poll':
+        return <div className="p-4 bg-gray-300 rounded">
+          {/* <TacherPollViewComponent changeLayoutBack={handlePollEnd} handleRanking={handleRankingScreenSwitch} />
+           */}
+          <TeacherPollResult />
+        </div>;
       case 'Participants':
         return <div className="p-4 bg-gray-300 rounded">Participants Component</div>;
       case 'Rank':
         return <div className="p-4 bg-gray-300 rounded">
-          <RankingList rankings={pollResult.rankings} userId='s1' isTeacher={true} />
+          <RankingList userId='s1' isTeacher={true} />
         </div>;
       default:
         return null;
@@ -450,8 +494,8 @@ const Videolayouts = ({ user, roomId }: { user: any, roomId: string }) => {
           </li>
           <li>
             <button
-              className={`w-full text-left p-2 rounded ${activeSection === 'AskQuestions' ? 'bg-gray-400' : ''}`}
-              onClick={() => setActiveSection('AskQuestions')}
+              className={`w-full text-left p-2 rounded ${activeSection === 'Poll' ? 'bg-gray-400' : ''}`}
+              onClick={() => setActiveSection('Poll')}
             >
               <BsFillQuestionSquareFill size={24} color='black' />
             </button>

@@ -37,14 +37,16 @@ type LeaderboardEntry struct {
 }
 
 type LeaderboardResult struct {
-	PollId            string             `json:"pollId"`
-	TotalUsers        int                `json:"totalUsers"`
-	TotalSubmissions  int                `json:"totalSubmissions"` // Total number of submissions
-	TotalCorrect      int                `json:"totalCorrect"`     // Total correct answers
-	Rankings          []LeaderboardEntry `json:"rankings"`
-	ResponseCount     map[string]int     `json:"responseCount"`
-	CountNotResponded int                `json:"countNotResponded"`
-	CorrectAnswer     string             `json:"correctAnswer"`
+	PollId             string             `json:"pollId"`
+	TotalUsers         int                `json:"totalUsers"`
+	TotalSubmissions   int                `json:"totalSubmissions"` // Total number of submissions
+	TotalCorrect       int                `json:"totalCorrect"`     // Total correct answers
+	Rankings           []LeaderboardEntry `json:"rankings"`
+	ResponseCount      map[string]int     `json:"responseCount"`
+	CountNotResponded  int                `json:"countNotResponded"`
+	CorrectAnswer      string             `json:"correctAnswer"`
+	NotResponded       []string           `json:"notResponded"`
+	IncorrectResponded []string           `json:"incorrectResponded"`
 }
 
 type RoomPollManager struct {
@@ -146,14 +148,15 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 
 	optionCount := make(map[string]int)
 
-	CountNotResponded := 0
-
 	for _, option := range givenOption {
 		optionCount[option] = 0
 	}
 
 	var rankings []LeaderboardEntry
 	correctCount := 0
+
+	var NotResponded []string
+	var IncorrectResponded []string
 
 	for _, response := range poll.PollResponse {
 
@@ -162,7 +165,11 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 		}
 
 		if response.Answer == "NA" {
-			CountNotResponded++
+			NotResponded = append(NotResponded, response.UserId)
+		}
+
+		if !response.IsCorrect {
+			IncorrectResponded = append(IncorrectResponded, response.UserId)
 		}
 
 		if response.IsCorrect {
@@ -183,14 +190,16 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 	}
 
 	result := &LeaderboardResult{
-		PollId:            id,
-		TotalUsers:        len(poll.PollResponse),
-		TotalSubmissions:  len(poll.PollResponse),
-		TotalCorrect:      correctCount,
-		Rankings:          rankings,
-		ResponseCount:     optionCount,
-		CountNotResponded: CountNotResponded,
-		CorrectAnswer:     poll.CorrectAnswer,
+		PollId:             id,
+		TotalUsers:         len(poll.PollResponse),
+		TotalSubmissions:   len(poll.PollResponse),
+		TotalCorrect:       correctCount,
+		Rankings:           rankings,
+		ResponseCount:      optionCount,
+		CountNotResponded:  len(NotResponded),
+		IncorrectResponded: IncorrectResponded,
+		NotResponded:       NotResponded,
+		CorrectAnswer:      poll.CorrectAnswer,
 	}
 
 	return result, nil
