@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { pollDataState } from "../store/userStore";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
+import ClockLoader from "react-spinners/ClockLoader";
+import TimerBar from "./TimerBar";
+
+
 
 
 interface RankingList {
@@ -19,7 +23,7 @@ const ResultComponent = ({ displayRankings }: { displayRankings: RankingList[] }
                 <h2 className="text-lg font-semibold mb-2">Rankings</h2>
                 <div className="space-y-1 h-40 overflow-y-auto pr-2 no-scrollbar">
                     {displayRankings.length == 0 ?
-                        <div className="text-gray-500 text-sm  flex justify-center items-center">No rankings available!</div>
+                        <div key={'1'} className="text-gray-500  text-sm  flex justify-center items-center">No rankings available!</div>
                         :
                         displayRankings.map((ranking) => (
                             <div
@@ -34,7 +38,7 @@ const ResultComponent = ({ displayRankings }: { displayRankings: RankingList[] }
 
 
                                     {ranking.submissionTime
-                                        ? new Date(ranking.submissionTime).toLocaleTimeString()
+                                        ? ranking.submissionTime.toFixed(1)
                                         : '--'}
 
 
@@ -49,6 +53,8 @@ const ResultComponent = ({ displayRankings }: { displayRankings: RankingList[] }
 
 const TeacherPollResult = () => {
     const [result, setResult] = useState<typeof resultType[number]>("Correct");
+    const [Loading, setLoading] = useState<boolean>(true);
+
     const pollData = useRecoilValue(pollDataState);
 
 
@@ -57,7 +63,12 @@ const TeacherPollResult = () => {
     }
 
     if (pollData != null && pollData.pollResult == null) {
-        return <div>Loading</div>;
+        return <div className=" flex justify-center items-center relative  h-2/3 p-4">
+
+            <TimerBar durationInSeconds={pollData.timer} />
+
+            <ClockLoader />
+        </div>;
     }
 
     if (pollData.pollResult?.totalSubmissions == 0) {
@@ -70,6 +81,8 @@ const TeacherPollResult = () => {
 
 
     const optionDistribution = pollData.pollResult?.responseCount || {};
+    
+
 
     const getRankings = (type: typeof resultType[number]): RankingList[] => {
         switch (type) {
@@ -92,7 +105,7 @@ const TeacherPollResult = () => {
             case "Incorrect":
                 if (!pollData.pollResult) return 0;
 
-                const ans = pollData.pollResult?.totalSubmissions - pollData.pollResult?.totalCorrect || 0;
+                const ans = (pollData.pollResult?.totalSubmissions - pollData.pollResult?.totalCorrect - pollData.pollResult?.countNotResponded) || 0;
 
                 if (typeof (ans) !== "number") {
                     return 0;
@@ -121,8 +134,8 @@ const TeacherPollResult = () => {
                                     ${option === pollData.pollResult?.correctAnswer ? " bg-green-200" : "bg-red-300"}
                                     `}
                             >
-                                <div className="absolute -top-6 w-full text-center text-sm">
-                                    {value}%
+                                <div className="absolute -top-6 w-full text-center text-xs">
+                                    {value / pollData.pollResult!.totalSubmissions * 100} %
                                 </div>
                             </div>
                         </div>

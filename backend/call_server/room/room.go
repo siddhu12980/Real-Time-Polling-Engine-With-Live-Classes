@@ -54,6 +54,7 @@ type RoomPollManager struct {
 }
 
 func (rpm *RoomPollManager) StartPoll(pollId string,
+	userIds []string,
 	callback func(result *LeaderboardResult, err error),
 	broadcastFunc func(message map[string]interface{}) error) error {
 
@@ -74,6 +75,11 @@ func (rpm *RoomPollManager) StartPoll(pollId string,
 	poll.EndTime = now.Add(time.Duration(poll.Duration) * time.Second)
 
 	rpm.Polls[pollId] = poll
+
+	//intitilize responses for all users
+	if err := rpm.InitializePollResponses(pollId, userIds); err != nil {
+		return fmt.Errorf("failed to initialize poll responses: %v", err)
+	}
 
 	broadcastMessage := map[string]interface{}{
 		"id":   poll.Id,
@@ -128,7 +134,7 @@ func (rpm *RoomPollManager) scheduleEndPoll(pollId string, duration int,
 	callback func(result *LeaderboardResult, err error),
 ) {
 
-	time.Sleep(time.Duration(duration) * time.Second)
+	time.Sleep(time.Duration(duration)*time.Second + 1*time.Second)
 	result, err := rpm.EndPoll(pollId)
 
 	if err != nil {
@@ -153,9 +159,11 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 	}
 
 	var rankings []LeaderboardEntry
+
 	correctCount := 0
 
 	var NotResponded []string
+
 	var IncorrectResponded []string
 
 	for _, response := range poll.PollResponse {
@@ -167,8 +175,7 @@ func (rpm *RoomPollManager) GenerateLeaderboard(id string) (*LeaderboardResult, 
 		if response.Answer == "NA" {
 			NotResponded = append(NotResponded, response.UserId)
 		}
-
-		if !response.IsCorrect {
+		if !response.IsCorrect && response.Answer != "NA" {
 			IncorrectResponded = append(IncorrectResponded, response.UserId)
 		}
 
@@ -246,27 +253,31 @@ func (rpm *RoomPollManager) CheckResponse(pollId string, userId string,
 			return false, fmt.Errorf("poll has ended")
 		}
 
-		id := fmt.Sprintf("%s-%s", pollId, userId)
-
-		for _, response := range poll.PollResponse {
+		for i, response := range poll.PollResponse {
 			if response.UserId == userId {
-				fmt.Printf("Response from user %s already exists for poll %s!\n", userId, pollId)
-				return response.IsCorrect, nil
+
+				if response.Answer != "NA" {
+					fmt.Printf("Response from user %s already exists for poll %s!\n", userId, pollId)
+					return response.IsCorrect, nil
+				}
+
+				isCorrect := (answer == poll.CorrectAnswer)
+
+				poll.PollResponse[i] = pollResponse{
+					Id:          response.Id,
+					RoomId:      poll.RoomId,
+					UserId:      userId,
+					IsCorrect:   isCorrect,
+					Answer:      answer,
+					SubmittedAt: time.Now(),
+				}
+
+				rpm.Polls[pollId] = poll
+				fmt.Printf("Response from user %s updated successfully for poll %s!\n", userId, pollId)
+
+				return isCorrect, nil
 			}
 		}
-
-		isCorrect := (answer == poll.CorrectAnswer)
-
-		response := pollResponse{
-			Id:          id,
-			RoomId:      poll.RoomId,
-			UserId:      userId,
-			IsCorrect:   isCorrect,
-			Answer:      answer,
-			SubmittedAt: time.Now(),
-		}
-		rpm.AddResponse(pollId, response)
-		return isCorrect, nil
 	}
 	fmt.Printf("Poll with ID %s not found!\n", pollId)
 
@@ -277,4 +288,30 @@ func StartRoomPollManager() *RoomPollManager {
 	return &RoomPollManager{
 		Polls: make(map[string]Poll),
 	}
+}
+
+func (rpm *RoomPollManager) InitializePollResponses(pollId string, users []string) error {
+	poll, exists := rpm.Polls[pollId]
+	if !exists {
+		return fmt.Errorf("poll %s not found", pollId)
+	}
+
+	// Initialize responses for all users with "NA" answer
+	for _, userId := range users {
+		id := fmt.Sprintf("%s-%s", pollId, userId)
+		response := pollResponse{
+			Id:          id,
+			RoomId:      poll.RoomId,
+			UserId:      userId,
+			IsCorrect:   false,
+			Answer:      "NA", // Special marker for not answered
+			SubmittedAt: time.Time{},
+		}
+		poll.PollResponse = append(poll.PollResponse, response)
+		fmt.Printf("Default Response for user %s initialized successfully!\n", userId)
+
+	}
+
+	rpm.Polls[pollId] = poll
+	return nil
 }

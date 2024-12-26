@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"live/typess"
 	"os"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 	lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
-func GetJoinToken(room, identity string) string {
+func GetJoinToken(room string, identity typess.Role) string {
 	fmt.Print("generating TOken")
 	fmt.Print("\n env", os.Getenv("LIVEKIT_API_KEY"))
 	at := auth.NewAccessToken(os.Getenv("LIVEKIT_API_KEY"), os.Getenv("LIVEKIT_API_SECRET"))
@@ -31,7 +32,7 @@ func GetJoinToken(room, identity string) string {
 		CanSubscribe: &canSubscribe,
 	}
 
-	at.SetVideoGrant(grant).SetIdentity(identity).SetValidFor(time.Hour)
+	at.SetVideoGrant(grant).SetIdentity(string(identity)).SetValidFor(time.Hour)
 
 	token, _ := at.ToJWT()
 	return token

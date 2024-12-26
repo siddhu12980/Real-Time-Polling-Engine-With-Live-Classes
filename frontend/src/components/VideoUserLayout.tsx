@@ -13,7 +13,7 @@ import { CustomBar } from './CustomBar';
 import { LiveKitRoom, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
-import { useRecoilState } from 'recoil';
+import { useRecoilState, useSetRecoilState } from 'recoil';
 import { pollDataState, remainingTimeState, userState } from '../store/userStore';
 import { useParams } from 'react-router-dom';
 import Poll from './Poll';
@@ -98,7 +98,9 @@ const VideoUserLayout = () => {
         serverUrl={serverUrl}
         data-lk-theme="default"
       >
-        <Videolayouts user={user} roomId={params.roomId!} />
+        {/* <Videolayouts user={user} roomId={params.roomId!} /> */}
+        <Videolayouts  />
+
       </LiveKitRoom >
       : <div> Lodaingn ... </div>
     }
@@ -106,7 +108,7 @@ const VideoUserLayout = () => {
 
 }
 
-const Videolayouts = ({ }: { user: any, roomId: string }) => {
+const Videolayouts = () => {
 
   const [activeSection, setActiveSection] = useState('Chat');
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -114,12 +116,11 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
 
   const [pollData, setPollData] = useRecoilState(pollDataState);
 
-  const [remainingTime, setRemainingTime] = useRecoilState(remainingTimeState);
+  const setRemainingTime = useSetRecoilState(remainingTimeState);
 
 
   const handlePollEnd = () => {
     console.log("Poll Ended Erasing Data");
-    // setPollData(null);
     setRemainingTime(0);
   };
 
@@ -196,9 +197,10 @@ const Videolayouts = ({ }: { user: any, roomId: string }) => {
               case "startPoll":
                 console.log(message_json)
 
-                if (pollDataState != null) {
+                if (pollData != null) {
                   console.log("Poll Already Active")
                   setPollData(null)
+                  setRemainingTime(0)
 
                 }
 

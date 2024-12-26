@@ -32,7 +32,7 @@ const TimerBar: React.FC<TimerBarProps> = ({ durationInSeconds }) => {
     return (
 
         <LoadingBar
-
+        
         containerStyle={{
           position: 'absolute', 
           top: -1,
@@ -40,7 +40,6 @@ const TimerBar: React.FC<TimerBarProps> = ({ durationInSeconds }) => {
           width: '100%',
           opacity: 0.5,
           height: '5px', 
-
         }}
 
             color={` ${progress < 50 ? 'blue' : progress < 80 ? 'orange' : 'red'}`} 
@@ -48,8 +47,8 @@ const TimerBar: React.FC<TimerBarProps> = ({ durationInSeconds }) => {
             progress={progress}
             onLoaderFinished={() => setProgress(0)}
         />
-
     );
 };
 
 export default TimerBar;
+

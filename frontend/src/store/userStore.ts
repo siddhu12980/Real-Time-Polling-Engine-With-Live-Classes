@@ -26,8 +26,10 @@ export interface PollResult {
   correctAnswer: string;
   totalSubmissions: number;
   countNotResponded: number;
-  ranking: { userId: string; submissionTime: number; rank: number }[]; 
+  rankings: { userId: string, submissionTime: number, rank: number }[];
   totalCorrect: number;
+  incorrectResponded: { userId: string, submissionTime: number, rank: number }[];
+  notResponded: { userId: string, submissionTime: number, rank: number }[];
 }
 
 export interface PollData {
@@ -37,13 +39,21 @@ export interface PollData {
   timer: number;
   question: string | null;
   pollResult: PollResult | null;
-  remainingTime: number | 0;
+
+  // remainingTime: number | 0;
 }
 
 export const pollDataState = atom<PollData | null>({
   key: 'pollDataState',
   default: null,
 });
+
+export const remainingTimeState = atom<number>({
+  key: 'remainingTimeState',
+  default: 0,
+});
+
+
 
 
 

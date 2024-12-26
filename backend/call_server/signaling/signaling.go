@@ -164,7 +164,7 @@ func (s *SignalingServer) BroadCastMessage(roomId string, message Message, sende
 }
 
 func scheduleResponse(message map[string]interface{}, conn *websocket.Conn, endTime time.Time) {
-	timeUntilResponse := time.Until(endTime) - 2*time.Second
+	timeUntilResponse := time.Until(endTime) - 1*time.Second
 
 	if timeUntilResponse > 0 {
 		fmt.Printf("Scheduling Response waiting Time: %v\n", timeUntilResponse)
@@ -322,6 +322,12 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 			return fmt.Errorf("poll Type not provided")
 		}
 
+		users := make([]string, 0)
+
+		for _, receiver := range *s.rooms[roomId].Receivers {
+			users = append(users, receiver.ID)
+		}
+
 		for i, option := range PollOptions {
 			options[i] = option.(string)
 		}
@@ -344,7 +350,7 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		err := s.pollManager.StartPoll(
 			poll.Id,
-
+			users,
 			func(result *room.LeaderboardResult, err error) {
 				if err != nil {
 					fmt.Printf("Error ending poll: %v\n", err)
@@ -413,7 +419,9 @@ func (s *SignalingServer) HandleMessage(conn *websocket.Conn, messageType string
 
 		answer, ok := pollData["answer"].(string)
 
-		if !ok || answer == "" {
+		fmt.Print("Answer", answer)
+
+		if !ok || answer == "" || answer == "undefined || answer == null" || answer == "NA" {
 			return fmt.Errorf("answer is required")
 		}
 

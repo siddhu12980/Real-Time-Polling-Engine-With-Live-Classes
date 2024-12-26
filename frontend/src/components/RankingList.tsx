@@ -15,13 +15,18 @@ interface RankingListProps {
 const RankingList = ({ userId, isTeacher }: RankingListProps) => {
     const pollData = useRecoilValue(pollDataState);
     console.log("Poll Data inside Rank list", pollData);
-    
 
-    if (pollData == null || pollData.pollResult == null || pollData.pollResult.rankings == null) {
-        return <p>No rankings available!</p>;  
+
+    if (pollData == null || pollData.pollResult == null) {
+
+        return <p>No rankings available!</p>;
     }
 
-    const rankings: RankingList[] = pollData.pollResult.rankings;
+
+
+
+
+    const rankings: RankingList[] = pollData.pollResult.rankings || [];
     console.log(" Ranking inside Rank list", rankings);
 
 
@@ -33,9 +38,18 @@ const RankingList = ({ userId, isTeacher }: RankingListProps) => {
             return rankings;
         }
 
+        if (  rankings == null || rankings.length == 0) return [
+            {
+                userId: userId,
+                rank: 0,
+                submissionTime: 0
+            }
+
+        ] as RankingList[];
+
         if (rankings.length < 3) return rankings;
 
-        if (rankings.length == 0) return [] as RankingList[];
+    
 
         const userRanking = rankings.find(r => r.userId === userId);
         const topThree = rankings.slice(0, 3);
@@ -65,11 +79,11 @@ const RankingList = ({ userId, isTeacher }: RankingListProps) => {
                                 }`}
                         >
                             <div className="flex items-center space-x-4">
-                                <span className="font-semibold w-8">{ranking.rank}</span>
+                                <span className="font-semibold w-8">{ranking.rank == 0 ? '-' : ranking.rank}</span>
                                 <span>User {ranking.userId}</span>
                             </div>
                             <span className="text-gray-600">
-                                {ranking.submissionTime.toFixed(2)}s
+                                {ranking.submissionTime == 0 ? '-' : ranking.submissionTime.toFixed(1)}
                             </span>
                         </div>
                     ))}

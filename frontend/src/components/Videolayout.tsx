@@ -19,7 +19,6 @@ import { useRecoilState } from 'recoil';
 import { pollDataState, remainingTimeState, userState } from '../store/userStore';
 import CreatePoll from './CreatePoll';
 import RankingList from './RankingList';
-import TacherPollViewComponent from './TacherPollViewComponent';
 import TeacherPollResult from './TeacherPollResult';
 
 const serverUrl = 'wss://sidd-live-server-l3p4e136.livekit.cloud';
