@@ -68,3 +68,9 @@ type UserRoomData struct {
 	Room   string `json:"room"`
 	Role   Role   `json:"role"`
 }
+
+type JwtData struct {
+	UserId   string `json:"userId"`
+	Username string `json:"username"`
+	Role     Role   `json:"role"`
+}

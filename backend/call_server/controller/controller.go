@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"live/helper"
 	"live/sdk"
 	"live/service"
 	"live/typess"
@@ -23,6 +24,7 @@ func NewUserController(userService service.UserService) *UserController {
 }
 
 func (u *UserController) SignupUserHandler(c *gin.Context) {
+
 	if c.Request.Method == http.MethodOptions {
 		return
 	}
@@ -47,18 +49,32 @@ func (u *UserController) SignupUserHandler(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Received: Name = %s\n", data.Name)
+	fmt.Printf("\n Received: Data  = %v \n", data)
 
-	user, err := u.userService.SignupUser(c, data)
+	user, err := u.userService.SignupUser(c.Request.Context(), data)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	token_data := typess.JwtData{
+		UserId:   user.ID,
+		Role:     user.Role,
+		Username: user.Username,
+	}
+
+	token, err := helper.CreateToken(token_data)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+
+	}
+
 	res := &typess.WebResponse{
-		Message: "User created successfully",
-		Data:    user,
+		Message: "User Ceated successfully",
+		Data:    token,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -66,6 +82,7 @@ func (u *UserController) SignupUserHandler(c *gin.Context) {
 }
 
 func (u *UserController) SigninUserHandler(c *gin.Context) {
+
 	if c.Request.Method == http.MethodOptions {
 		return
 	}
@@ -92,7 +109,20 @@ func (u *UserController) SigninUserHandler(c *gin.Context) {
 
 	fmt.Printf("Received: Email = %s\n", data.Email)
 
-	user, err := u.userService.SinginUser(c, data)
+	user, err := u.userService.SinginUser(c.Request.Context(), data)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	token_data := typess.JwtData{
+		UserId:   user.ID,
+		Role:     user.Role,
+		Username: user.Username,
+	}
+
+	token, err := helper.CreateToken(token_data)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -101,7 +131,7 @@ func (u *UserController) SigninUserHandler(c *gin.Context) {
 
 	res := &typess.WebResponse{
 		Message: "User created successfully",
-		Data:    user,
+		Data:    token,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -119,20 +149,14 @@ func (u *UserController) FindAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	body_data, err := io.ReadAll(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
-		return
-	}
-
 	defer c.Request.Body.Close()
 
-	var data typess.FindAllUsersResponse
+	check, exist := c.Get("user")
 
-	if err := json.Unmarshal(body_data, &data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
-		return
+	if !exist {
+		fmt.Print("User not found")
+	} else {
+		fmt.Print("User found %v", check)
 	}
 
 	users, err := u.userService.FindAllUsers(c)

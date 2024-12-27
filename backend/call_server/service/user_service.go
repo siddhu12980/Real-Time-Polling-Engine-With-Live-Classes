@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"live/repository"
 	"live/typess"
 )
@@ -55,12 +56,24 @@ func (u *UserRepos) FindUserById(ctx context.Context, userId typess.FindUserById
 
 func (u *UserRepos) SignupUser(ctx context.Context, user typess.SignupuserRequest) (*typess.SignupuserResponse, error) {
 
+	fmt.Printf("user Service  : %v \n ", user)
+
+	if user.Email == "" || user.Name == "" || user.Password == "" {
+		return nil, errors.New("invalid data")
+	}
+
+	if user.Role == "" {
+		user.Role = typess.User
+	}
+
 	data := typess.UserSignupModel{
 		Email:    user.Email,
 		Name:     user.Name,
 		Password: user.Password,
-		Role:     typess.Role(user.Role),
+		Role:     user.Role,
 	}
+
+	fmt.Printf("\n signup Data  : %v \n", data)
 
 	userData, err := u.UserRepo.SignupUser(ctx, data)
 
