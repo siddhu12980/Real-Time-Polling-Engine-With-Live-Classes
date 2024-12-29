@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"live/repository"
 	"live/typess"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type UserService interface {
@@ -14,10 +17,54 @@ type UserService interface {
 	FindUserById(ctx context.Context, userId typess.FindUserByIdRequest) (*typess.FindUserByIdResponse, error)
 	FindAllUsers(ctx context.Context) (*typess.FindAllUsersResponse, error)
 	RemoveUser(ctx context.Context, userId string) (*typess.UserDBModel, error)
+
+	EnrollUserToCourse(ctx context.Context, userId, courseId string) error
+	GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error)
+	GetAllUserInCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error)
 }
 
 type UserRepos struct {
 	UserRepo repository.UserRepo
+}
+
+// EnrollUserToCourse implements UserService.
+func (u *UserRepos) EnrollUserToCourse(ctx context.Context, userId string, courseId string) error {
+
+	err := u.UserRepo.EnrollUserToCOourse(ctx, userId, courseId)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+func (u *UserRepos) GetAllUserInCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error) {
+
+	users, err := u.UserRepo.GetAllUserINCourse(ctx, courseId)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+
+}
+
+// GetUserEnrolledCourses implements UserService.
+func (u *UserRepos) GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error) {
+
+	courses, err := u.UserRepo.GetUserEnrolledCourses(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	return courses, nil
+
+}
+
+func GinErrorResponse(statusCode int, message string) error {
+	return &gin.Error{
+		Err:  errors.New(message),
+		Type: gin.ErrorTypePublic,
+		Meta: gin.H{"statusCode": statusCode},
+	}
 }
 
 func (u *UserRepos) SinginUser(ctx context.Context, user typess.SigninuserRequest) (*typess.SigninuserResponse, error) {
@@ -27,7 +74,13 @@ func (u *UserRepos) SinginUser(ctx context.Context, user typess.SigninuserReques
 	userData, err := u.UserRepo.SingnInUser(ctx, data)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, typess.ErrUserNotFound) {
+			return nil, GinErrorResponse(http.StatusNotFound, "User not found")
+		}
+		if errors.Is(err, typess.ErrInvalidPassword) {
+			return nil, GinErrorResponse(http.StatusUnauthorized, "Invalid password")
+		}
+		return nil, GinErrorResponse(http.StatusInternalServerError, "An unexpected error occurred")
 	}
 
 	return (*typess.SigninuserResponse)(userData), nil
@@ -56,21 +109,23 @@ func (u *UserRepos) FindUserById(ctx context.Context, userId typess.FindUserById
 
 func (u *UserRepos) SignupUser(ctx context.Context, user typess.SignupuserRequest) (*typess.SignupuserResponse, error) {
 
+	rol := typess.Role("user")
+
 	fmt.Printf("user Service  : %v \n ", user)
 
 	if user.Email == "" || user.Name == "" || user.Password == "" {
 		return nil, errors.New("invalid data")
 	}
 
-	if user.Role == "" {
-		user.Role = typess.User
+	if user.Code == "1234" {
+		rol = typess.Role("admin")
 	}
 
 	data := typess.UserSignupModel{
 		Email:    user.Email,
 		Name:     user.Name,
 		Password: user.Password,
-		Role:     user.Role,
+		Role:     rol,
 	}
 
 	fmt.Printf("\n signup Data  : %v \n", data)

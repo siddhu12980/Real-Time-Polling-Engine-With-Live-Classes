@@ -5,20 +5,19 @@ import (
 	"live/config"
 	"live/controller"
 	"live/helper"
+	"live/prisma/db"
 	"live/repository"
 	"live/service"
 	"live/signaling"
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
-func GuidMiddleware() gin.HandlerFunc {
+func AuthMiddleware(client *db.PrismaClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		fmt.Print("GuidMiddleware")
@@ -57,10 +56,50 @@ func GuidMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// need to check if user exists in db and if user role is admin or not
+		userId := claims.UserId
+
+		ctx := c.Request.Context()
+
+		data, err := client.User.FindUnique(
+			db.User.ID.Equals(userId),
+		).Exec(ctx)
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			c.Abort()
+			return
+		}
+
+		fmt.Printf("User Data from Db : %v", data)
+
+		if data.Role != "admin" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User is not admin"})
+			c.Abort()
+			return
+		}
+
 		c.Set("user", claims)
 
 		c.Next()
 
+	}
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
 	}
 }
 
@@ -83,49 +122,39 @@ func main() {
 	defer db.Prisma.Disconnect()
 
 	userRepositoy := repository.NewUserRepoImp(db)
+	courseRepo := repository.NewCourseRepoImp(db)
 
 	userService := service.NewUserService(userRepositoy)
+	courseService := service.NewCourseService(courseRepo)
 
 	controllerServer := controller.NewUserController(userService)
+	courseController := controller.NewCourseController(courseService)
 
 	server := signaling.NewSignalingServer()
 
 	ginRouter := gin.Default()
 
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-
-	ginRouter.Use(cors.New(config))
+	ginRouter.Use(CORSMiddleware())
 
 	ginRouter.POST("/getToken", controllerServer.GetTokenHandler)
 
 	ginRouter.POST("/auth/signup", controllerServer.SignupUserHandler)
 	ginRouter.POST("/auth/signin", controllerServer.SigninUserHandler)
 	ginRouter.POST("/user/removeUser", controllerServer.RemoveUserHandler)
-	ginRouter.GET("/user/all", GuidMiddleware(), controllerServer.FindAllUsersHandler)
+	ginRouter.GET("/user/all", AuthMiddleware(db), controllerServer.FindAllUsersHandler)
 
 	ginRouter.GET("/user/:id", controllerServer.FindUserByIdHandler)
 	ginRouter.GET("/pdf/:doc", helper.GetPdf)
 
+	ginRouter.POST("/course", AuthMiddleware(db), courseController.CreateCourseHandler)
+	ginRouter.GET("/course/all", AuthMiddleware(db), courseController.GetCourseHandler)
+	ginRouter.GET("/course/:id", AuthMiddleware(db), courseController.GetCourseByIdHandler)
+	ginRouter.DELETE("/course/:id", AuthMiddleware(db), courseController.DeleteCourseHandler)
+	ginRouter.PUT("/course/:id", AuthMiddleware(db), courseController.UpdateCourseHandler)
+
 	ginRouter.GET("/ws", gin.WrapF(server.HandleWebSocket))
 
 	log.Printf("WebRTC signaling server starting on :8080")
-	// log.Fatal(ginRouter.Run(":8080"))claims
-
-	serve := &http.Server{
-		Addr:           ":8080",
-		Handler:        ginRouter,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-
-	serve_err := serve.ListenAndServe()
-
-	if serve_err != nil {
-		log.Fatalf("err starting server : %v", serve_err)
-	}
+	log.Fatal(ginRouter.Run(":8080"))
 
 }

@@ -7,16 +7,69 @@ generator db {
     provider = "go run github.com/steebchen/prisma-client-go"
 }
 
+
+
 enum Role {
     user
     admin
+    superadmin
+}
+
+enum Status {
+    AVAILABLE
+    FULL
+    CANCELLED
+    COMPLETED
+}
+
+enum UserClassStatus {
+    ENROLLED
+    COMPLETED
+    CANCELLED
 }
 
 model User {
     id        String   @id @default(cuid())
-    email     String  @unique
-    password  String
+    email     String   @unique
     username  String
-    createdAt DateTime @default(now())
+    password  String
     role      Role     @default(user)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    teachingCourses Course[]     @relation("CourseCreator")
+    enrollments     Enrollment[]
+}
+
+model Course {
+    id           String   @id @default(cuid())
+    title        String   @unique
+    description  String?
+    creator      User     @relation("CourseCreator", fields: [teacherId], references: [id], onDelete: Cascade)
+    teacherId    String
+    subject      String   @default("General")
+    participants Int      @default(0)
+    status       Status   @default(AVAILABLE)
+    maxStudents  Int      @default(10)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+    schedule     DateTime?
+
+    enrollments Enrollment[]
+}
+
+model Enrollment {
+    id        String          @id @default(cuid())
+    course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+    courseId  String
+    student   User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+    studentId String
+    joinedAt  DateTime        @default(now())
+    updatedAt DateTime        @updatedAt
+    grade     Float?          @default(0)
+    status    UserClassStatus @default(ENROLLED)
+
+    @@unique([courseId, studentId])
+    @@index([studentId])
+    @@index([courseId])
 }
