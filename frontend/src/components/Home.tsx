@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ClassCard from './ClassCard';
-import { useRecoilState, useRecoilValue } from 'recoil';
+import { useRecoilState } from 'recoil';
 import { userState } from '../store/userStore';
 
 interface ClassData {
@@ -18,6 +18,8 @@ const Home = () => {
 
   const navigate = useNavigate()
   const [user, setUser] = useRecoilState(userState)
+
+  console.log("User inside Home", user);
 
   // const [classes, setClasses] = useState<ClassData[]>([]);
 

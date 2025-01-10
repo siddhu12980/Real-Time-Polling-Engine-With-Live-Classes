@@ -1,3 +1,4 @@
+import { Delete, Trash } from "lucide-react";
 
 interface ClassData {
   roomId: string;
@@ -40,7 +41,7 @@ const ClassCard = ({ classItem, isTeacher, handleDeleteClass, handleClassClick }
 
           className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
         >
-          ×
+          <Trash size={16}  />
         </button>
       )}
     </div>

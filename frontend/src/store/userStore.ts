@@ -9,6 +9,7 @@ export const userState = atom({
     "userName": "",
     "livekitToken": "",
     "token": "",
+    "role": "",
     "isteacher": false
   },
 });

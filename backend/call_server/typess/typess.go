@@ -78,10 +78,10 @@ type WebResponse struct {
 }
 
 type UserRoomData struct {
-	Name   string `json:"name"`
-	UserId string `json:"userId"`
-	Room   string `json:"room"`
-	Role   Role   `json:"role"`
+	Name   string `json:"name" binding:"required"`
+	UserId string `json:"userId" binding:"required"`
+	Room   string `json:"room" binding:"required"`
+	Role   Role   `json:"role" binding:"required"`
 }
 
 type JwtData struct {
@@ -234,4 +234,8 @@ const (
 type EnrollUserToCourseRequest struct {
 	UserId   string `json:"userId"`
 	CourseId string `json:"courseId"`
+}
+
+type CreateRoomRequest struct {
+	Name string `json:"name" binding:"required"`
 }

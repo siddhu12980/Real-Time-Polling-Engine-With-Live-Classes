@@ -20,9 +20,8 @@ func GetJoinToken(room string, identity typess.Role) string {
 	canPublish := false
 	canSubscribe := true
 
-	if identity == "admin" {
+	if identity == typess.Admin || identity == typess.Superadmin {
 		canPublish = true
-
 	}
 
 	grant := &auth.VideoGrant{
@@ -32,13 +31,13 @@ func GetJoinToken(room string, identity typess.Role) string {
 		CanSubscribe: &canSubscribe,
 	}
 
-	at.SetVideoGrant(grant).SetIdentity(string(identity)).SetValidFor(time.Hour)
+	at.SetVideoGrant(grant).SetIdentity(string("admin")).SetValidFor(time.Hour)
 
 	token, _ := at.ToJWT()
 	return token
 }
 
-func Handle_room() {
+func Handle_room(roomName string) (*livekit.Room, error) {
 	fmt.Print("fucls \n")
 	fmt.Print(os.Getenv("LIVEKIT_API_KEY"), "\n")
 
@@ -49,7 +48,7 @@ func Handle_room() {
 	roomClient := lksdk.NewRoomServiceClient(host, os.Getenv("LIVEKIT_API_KEY"), os.Getenv("LIVEKIT_API_SECRET"))
 
 	room, _ := roomClient.CreateRoom(context.Background(), &livekit.CreateRoomRequest{
-		Name:            "myroom1",
+		Name:            roomName,
 		EmptyTimeout:    10 * 60, // -> 10 min
 		MaxParticipants: 20,
 	}) //lets say this is class meet then there would be diefin number of partiticipatant
@@ -59,6 +58,8 @@ func Handle_room() {
 	rooms, _ := roomClient.ListRooms(context.Background(), &livekit.ListRoomsRequest{})
 
 	fmt.Printf("\n All the rooms : %v", rooms)
+
+	return room, nil
 
 }
 

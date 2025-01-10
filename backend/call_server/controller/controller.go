@@ -393,31 +393,37 @@ func (u *UserController) RemoveUserHandler(c *gin.Context) {
 
 func (u *UserController) GetTokenHandler(c *gin.Context) {
 
-	if c.Request.Method == http.MethodOptions {
-		return
-	}
-
-	if c.Request.Method != http.MethodPost {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only POST method is allowed"})
-		return
-	}
-
-	body, err := io.ReadAll(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
-		return
-	}
-	defer c.Request.Body.Close()
-
 	var data typess.UserRoomData
 
-	if err := json.Unmarshal(body, &data); err != nil {
+	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	room_token := sdk.GetJoinToken(data.Room, typess.Role(data.Role))
+	//type of user is JwtData
+	user, ok := c.Get("user")
+
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Context User not found"})
+		return
+	}
+
+	fmt.Printf("Context User : %v", user)
+
+	var jwtUser *typess.JwtData
+
+	jwtUser, ok = user.(*typess.JwtData)
+
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "jwt User not found"})
+		return
+	}
+
+	role := jwtUser.Role
+
+	fmt.Printf("Role : %v", role)
+
+	room_token := sdk.GetJoinToken(data.Room, role)
 
 	res := &typess.WebResponse{
 		Message: "Token generated successfully",

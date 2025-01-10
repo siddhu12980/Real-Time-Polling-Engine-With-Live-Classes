@@ -38,6 +38,7 @@ const Videolayout = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": "Bearer " + user.token
         },
         body: JSON.stringify({
           name: user.userName,
@@ -65,12 +66,12 @@ const Videolayout = () => {
           if (status !== 200) {
             throw new Error(data.error || "Unknown error occurred");
           }
-          console.log("Tokken success", data);
+          console.log("Tokken success for livekit", data);
 
 
-          setToken(data.token)
+          setToken(data.data)
 
-          setUser({ ...user, livekitToken: data.token })
+          setUser({ ...user, livekitToken: data.data })
 
         })
 
@@ -81,7 +82,7 @@ const Videolayout = () => {
 
     getToken()
 
-  }, []);
+  }, [params.roomId]);
 
 
 

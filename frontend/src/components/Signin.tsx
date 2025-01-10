@@ -4,7 +4,6 @@ import { Toaster, toast } from "sonner";
 import { userState } from "../store/userStore";
 import { useSetRecoilState } from "recoil";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
 import { decodeToken } from "../utils";
 
 const SignIn = () => {
@@ -73,16 +72,30 @@ const SignIn = () => {
 
           const token_data = decodeToken(token);
 
+          console.log("User state:", response.data);
+
           console.log("Token data:", token_data);
 
           if (token_data) {
-            setUser((prev) => ({
-              ...prev,
-              token: token,
+            const role: string = token_data.role;
+
+            let isTeacher = false;
+
+            if (
+              role === "teacher" ||
+              role === "admin" ||
+              role === "superadmin"
+            ) {
+              isTeacher = true;
+            }
+
+            setUser({
               userName: token_data.username,
-              userId: token_data.userId,
-              role: token_data.role,
-            }));
+              livekitToken: "",
+              isteacher: isTeacher,
+              role: role,
+              token: token,
+            });
 
             nav("/home");
           } else {
@@ -136,15 +149,40 @@ const SignIn = () => {
           const token = response.data.data;
 
           if (token) {
-            setUser((prev) => ({
-              ...prev,
-              token: token,
-            }));
+            const token_data = decodeToken(token);
+
+            console.log("Token data:", token_data);
+
+            if (token_data) {
+              const role: string = token_data.role;
+
+              let isTeacher = false;
+
+              if (
+                role === "teacher" ||
+                role === "admin" ||
+                role === "superadmin"
+              ) {
+                isTeacher = true;
+              }
+
+              setUser({
+                userName: token_data.username,
+                livekitToken: "",
+                isteacher: isTeacher,
+                role: role,
+                token: token,
+              });
+
+              nav("/home");
+            } else {
+              toast.error("Invalid token");
+            }
           }
 
           console.log("User state:", token);
 
-          //   nav("/home");
+          nav("/home");
         })
         .catch((error) => {
           console.error(error.response);

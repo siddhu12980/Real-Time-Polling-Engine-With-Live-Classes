@@ -26,11 +26,6 @@ func GetFormattedTime() string {
 }
 
 func GetPdf(c *gin.Context) {
-	if c.Request.Method != http.MethodGet {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only GET method is allowed"})
-		return
-	}
-
 	doc := c.Param("doc")
 
 	fmt.Printf("doc : %s", doc)

@@ -73,12 +73,6 @@ func AuthMiddleware(client *db.PrismaClient) gin.HandlerFunc {
 
 		fmt.Printf("User Data from Db : %v", data)
 
-		if data.Role != "admin" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User is not admin"})
-			c.Abort()
-			return
-		}
-
 		c.Set("user", claims)
 
 		c.Next()
@@ -122,13 +116,10 @@ func main() {
 	defer db.Prisma.Disconnect()
 
 	userRepositoy := repository.NewUserRepoImp(db)
-	courseRepo := repository.NewCourseRepoImp(db)
 
 	userService := service.NewUserService(userRepositoy)
-	courseService := service.NewCourseService(courseRepo)
 
 	controllerServer := controller.NewUserController(userService)
-	courseController := controller.NewCourseController(courseService)
 
 	server := signaling.NewSignalingServer()
 
@@ -136,7 +127,7 @@ func main() {
 
 	ginRouter.Use(CORSMiddleware())
 
-	ginRouter.POST("/getToken", controllerServer.GetTokenHandler)
+	ginRouter.POST("/getToken", AuthMiddleware(db), controllerServer.GetTokenHandler)
 
 	ginRouter.POST("/auth/signup", controllerServer.SignupUserHandler)
 	ginRouter.POST("/auth/signin", controllerServer.SigninUserHandler)
@@ -145,12 +136,6 @@ func main() {
 
 	ginRouter.GET("/user/:id", controllerServer.FindUserByIdHandler)
 	ginRouter.GET("/pdf/:doc", helper.GetPdf)
-
-	ginRouter.POST("/course", AuthMiddleware(db), courseController.CreateCourseHandler)
-	ginRouter.GET("/course/all", AuthMiddleware(db), courseController.GetCourseHandler)
-	ginRouter.GET("/course/:id", AuthMiddleware(db), courseController.GetCourseByIdHandler)
-	ginRouter.DELETE("/course/:id", AuthMiddleware(db), courseController.DeleteCourseHandler)
-	ginRouter.PUT("/course/:id", AuthMiddleware(db), courseController.UpdateCourseHandler)
 
 	ginRouter.GET("/ws", gin.WrapF(server.HandleWebSocket))
 
