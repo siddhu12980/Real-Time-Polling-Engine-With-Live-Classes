@@ -34,126 +34,6 @@ func HandleError(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 }
 
-func (u *UserController) EnrollUserToCOourse(c *gin.Context) {
-
-	if c.Request.Method == http.MethodOptions {
-		return
-	}
-
-	if c.Request.Method != http.MethodPost {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only POST method is allowed"})
-		return
-	}
-
-	body, err := io.ReadAll(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
-		return
-	}
-	defer c.Request.Body.Close()
-
-	var data typess.EnrollUserToCourseRequest
-
-	if err := json.Unmarshal(body, &data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
-		return
-	}
-
-	fmt.Printf("Received: Data = %v\n", data)
-
-	err = u.userService.EnrollUserToCourse(c, data.UserId, data.CourseId)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	res := &typess.WebResponse{
-		Message: "User enrolled successfully",
-	}
-
-	c.JSON(http.StatusOK, res)
-}
-
-func (u *UserController) GetUserEnrollments(c *gin.Context) {
-
-	if c.Request.Method == http.MethodOptions {
-		return
-	}
-
-	if c.Request.Method != http.MethodGet {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only GET method is allowed"})
-		return
-	}
-
-	defer c.Request.Body.Close()
-
-	check, exist := c.Get("user")
-
-	if !exist {
-		fmt.Print("User not found")
-	} else {
-		fmt.Print("User found %v", check)
-	}
-
-	userId := c.Query("userId")
-
-	enrollments, err := u.userService.GetUserEnrolledCourses(c, userId)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	res := &typess.WebResponse{
-		Message: "User enrollments fetched successfully",
-		Data:    enrollments,
-	}
-
-	c.JSON(http.StatusOK, res)
-
-}
-
-func (u *UserController) GetAllUserInACourse(c *gin.Context) {
-
-	if c.Request.Method == http.MethodOptions {
-		return
-	}
-
-	if c.Request.Method != http.MethodGet {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Only GET method is allowed"})
-		return
-	}
-
-	defer c.Request.Body.Close()
-
-	check, exist := c.Get("user")
-
-	if !exist {
-		fmt.Print("User not found")
-	} else {
-		fmt.Print("User found %v", check)
-	}
-
-	courseId := c.Query("courseId")
-
-	users, err := u.userService.GetAllUserInCourse(c, courseId)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	res := &typess.WebResponse{
-		Message: "Users in course fetched successfully",
-		Data:    users,
-	}
-
-	c.JSON(http.StatusOK, res)
-
-}
-
 func (u *UserController) SignupUserHandler(c *gin.Context) {
 
 	if c.Request.Method == http.MethodOptions {
@@ -400,7 +280,8 @@ func (u *UserController) GetTokenHandler(c *gin.Context) {
 		return
 	}
 
-	//type of user is JwtData
+	//check if room exist
+
 	user, ok := c.Get("user")
 
 	if !ok {
@@ -423,7 +304,7 @@ func (u *UserController) GetTokenHandler(c *gin.Context) {
 
 	fmt.Printf("Role : %v", role)
 
-	room_token := sdk.GetJoinToken(data.Room, role)
+	room_token := sdk.GetJoinToken(data.Room, role, jwtUser.Username)
 
 	res := &typess.WebResponse{
 		Message: "Token generated successfully",
@@ -432,6 +313,6 @@ func (u *UserController) GetTokenHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 
-	fmt.Printf("Received: Name = %s\n", data.Name)
+	fmt.Printf("Received: Name = %s\n", jwtUser.Username)
 
 }

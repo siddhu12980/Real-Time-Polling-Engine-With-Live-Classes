@@ -13,84 +13,10 @@ type UserRepo interface {
 	RemoveUser(ctx context.Context, userId string) (*typess.UserDBModel, error)
 	FindAllUsers(ctx context.Context) ([]typess.UserDBModel, error)
 	FindUserById(ctx context.Context, userId string) (*typess.UserDBModel, error)
-	EnrollUserToCOourse(ctx context.Context, userId, courseId string) error
-	GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error)
-	GetAllUserINCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error)
 }
 
 type UserRepoImp struct {
 	Db *db.PrismaClient
-}
-
-func (u *UserRepoImp) GetAllUserINCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error) {
-
-	data, err := u.Db.User.FindMany(
-		db.User.Enrollments.Some(
-			db.Enrollment.CourseID.Equals(courseId),
-		),
-	).Exec(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var users []typess.UserDBModel
-
-	for _, user := range data {
-
-		users = append(users, typess.UserDBModel{
-			ID:        user.ID,
-			Email:     user.Email,
-			Username:  user.Username,
-			CreatedAt: user.CreatedAt,
-			Role:      typess.Role(user.Role),
-		})
-
-	}
-
-	return users, nil
-
-}
-
-func (u *UserRepoImp) GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error) {
-
-	data, err := u.Db.Course.FindMany(
-		db.Course.Enrollments.Some(
-			db.Enrollment.StudentID.Equals(userId),
-		),
-	).Exec(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var courses []typess.CourseDBModel
-
-	for _, course := range data {
-
-		descrpt, _ := course.Description()
-
-		courses = append(courses, typess.CourseDBModel{
-			ID:          course.ID,
-			Title:       course.Title,
-			Description: &descrpt,
-			Subject:     course.Subject,
-			MaxStudents: course.MaxStudents,
-			CreatedAt:   course.CreatedAt,
-			UpdatedAt:   course.UpdatedAt,
-			Status:      typess.Status(course.Status),
-			Teacher: typess.UserDBModel{
-				ID:       course.Creator().ID,
-				Email:    course.Creator().Email,
-				Username: course.Creator().Username,
-				Role:     typess.Role(course.Creator().Role),
-			},
-		})
-
-	}
-
-	return courses, nil
-
 }
 
 func (u *UserRepoImp) SingnInUser(ctx context.Context, user typess.UserSinginModel) (*typess.UserDBModel, error) {
@@ -222,51 +148,6 @@ func (u *UserRepoImp) RemoveUser(ctx context.Context, userId string) (*typess.Us
 		CreatedAt: result.CreatedAt,
 		Role:      typess.Role(result.Role),
 	}, nil
-
-}
-
-func (u *UserRepoImp) EnrollUserToCOourse(ctx context.Context, userId, courseId string) error {
-
-	_, err := u.Db.Course.FindUnique(
-		db.Course.ID.Equals(courseId),
-	).Exec(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	//check if user  already enrolled
-
-	_, err = u.Db.User.FindUnique(
-		db.User.ID.Equals(userId),
-	).With(
-		db.User.Enrollments.Fetch(
-			db.Enrollment.CourseID.Equals(courseId),
-		),
-	).Exec(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	// enroll user to course
-
-	d, err := u.Db.Enrollment.CreateOne(
-		db.Enrollment.Course.Link(
-			db.Course.ID.Equals(courseId),
-		),
-		db.Enrollment.Student.Link(
-			db.User.ID.Equals(userId),
-		),
-	).Exec(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Print("Enrolled user: ", d)
-
-	return nil
 
 }
 

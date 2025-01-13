@@ -56,7 +56,6 @@ func AuthMiddleware(client *db.PrismaClient) gin.HandlerFunc {
 			return
 		}
 
-		// need to check if user exists in db and if user role is admin or not
 		userId := claims.UserId
 
 		ctx := c.Request.Context()
@@ -120,6 +119,7 @@ func main() {
 	userService := service.NewUserService(userRepositoy)
 
 	controllerServer := controller.NewUserController(userService)
+	roomConroller := controller.NewRoomController(db)
 
 	server := signaling.NewSignalingServer()
 
@@ -133,6 +133,12 @@ func main() {
 	ginRouter.POST("/auth/signin", controllerServer.SigninUserHandler)
 	ginRouter.POST("/user/removeUser", controllerServer.RemoveUserHandler)
 	ginRouter.GET("/user/all", AuthMiddleware(db), controllerServer.FindAllUsersHandler)
+
+	ginRouter.POST("/room", AuthMiddleware(db), roomConroller.CreateRoom)
+	ginRouter.GET("/room/my", AuthMiddleware(db), roomConroller.GetMyRooms)
+	ginRouter.GET("/room", AuthMiddleware(db), roomConroller.GetAllRooms)
+	ginRouter.DELETE("/room/:id", AuthMiddleware(db), roomConroller.DeleteRoom)
+	ginRouter.GET("/room/:id", AuthMiddleware(db), roomConroller.GetRoom)
 
 	ginRouter.GET("/user/:id", controllerServer.FindUserByIdHandler)
 	ginRouter.GET("/pdf/:doc", helper.GetPdf)

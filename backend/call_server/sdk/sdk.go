@@ -12,26 +12,33 @@ import (
 	lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
-func GetJoinToken(room string, identity typess.Role) string {
+func GetJoinToken(room string, identity typess.Role, userName string) string {
 	fmt.Print("generating TOken")
 	fmt.Print("\n env", os.Getenv("LIVEKIT_API_KEY"))
 	at := auth.NewAccessToken(os.Getenv("LIVEKIT_API_KEY"), os.Getenv("LIVEKIT_API_SECRET"))
 
 	canPublish := false
+
 	canSubscribe := true
+	isRoomAdmin := false
 
 	if identity == typess.Admin || identity == typess.Superadmin {
 		canPublish = true
+		isRoomAdmin = true
 	}
 
 	grant := &auth.VideoGrant{
-		RoomJoin:     true,
-		Room:         room,
-		CanPublish:   &canPublish,
-		CanSubscribe: &canSubscribe,
+		RoomJoin:       true,
+		Room:           room,
+		RoomAdmin:      isRoomAdmin,
+		CanPublish:     &canPublish,
+		CanSubscribe:   &canSubscribe,
+		CanPublishData: &canPublish,
 	}
 
-	at.SetVideoGrant(grant).SetIdentity(string("admin")).SetValidFor(time.Hour)
+	//change the identity to the user name dynamically
+
+	at.SetVideoGrant(grant).SetIdentity(userName).SetValidFor(time.Hour)
 
 	token, _ := at.ToJWT()
 	return token
@@ -60,6 +67,27 @@ func Handle_room(roomName string) (*livekit.Room, error) {
 	fmt.Printf("\n All the rooms : %v", rooms)
 
 	return room, nil
+
+}
+
+func Handle_room_delete(roomName string) error {
+
+	host := "https://sidd-live-server-l3p4e136.livekit.cloud"
+
+	roomClient := lksdk.NewRoomServiceClient(host, os.Getenv("LIVEKIT_API_KEY"), os.Getenv("LIVEKIT_API_SECRET"))
+
+	res, err := roomClient.DeleteRoom(context.Background(), &livekit.DeleteRoomRequest{
+		Room: roomName,
+	})
+
+	if err != nil {
+		fmt.Print("Error: ", err)
+		return err
+	}
+
+	fmt.Print("\n Room deleted", res)
+
+	return nil
 
 }
 

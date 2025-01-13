@@ -14,6 +14,7 @@ enum Role {
 }
 
 enum Status {
+    SCHEDULED
     AVAILABLE
     FULL
     CANCELLED
@@ -33,11 +34,16 @@ model User {
 
 model Room {
     id        String   @id @default(cuid())
-    name      String
-    capacity  Int
+    name      String @unique
+    title    String
+    capacity  Int @default(20)
+    subject   String @default("General")
     status    Status   @default(AVAILABLE)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     creator   User     @relation(fields: [creatorId], references: [id])
     creatorId String
+    startTime DateTime 
+    duration Int    @default(1)
+    endTime   DateTime
 }

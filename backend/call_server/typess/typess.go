@@ -78,10 +78,7 @@ type WebResponse struct {
 }
 
 type UserRoomData struct {
-	Name   string `json:"name" binding:"required"`
-	UserId string `json:"userId" binding:"required"`
-	Room   string `json:"room" binding:"required"`
-	Role   Role   `json:"role" binding:"required"`
+	Room string `json:"room" binding:"required"`
 }
 
 type JwtData struct {
@@ -102,6 +99,7 @@ type Status string
 const (
 	StatusAvailable Status = "AVAILABLE"
 	StatusFull      Status = "FULL"
+	StatusScheduled Status = "SCHEDULED"
 	StatusCancelled Status = "CANCELLED"
 	StatusCompleted Status = "COMPLETED"
 )
@@ -237,5 +235,9 @@ type EnrollUserToCourseRequest struct {
 }
 
 type CreateRoomRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name      string     `json:"name" binding:"required"`
+	Title     string     `json:"title" binding:"required"`
+	Subject   string     `json:"subject" binding:"required"`
+	StartTime *time.Time `json:"startTime" `
+	Duration  *int       `json:"duration"`
 }

@@ -17,46 +17,10 @@ type UserService interface {
 	FindUserById(ctx context.Context, userId typess.FindUserByIdRequest) (*typess.FindUserByIdResponse, error)
 	FindAllUsers(ctx context.Context) (*typess.FindAllUsersResponse, error)
 	RemoveUser(ctx context.Context, userId string) (*typess.UserDBModel, error)
-
-	EnrollUserToCourse(ctx context.Context, userId, courseId string) error
-	GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error)
-	GetAllUserInCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error)
 }
 
 type UserRepos struct {
 	UserRepo repository.UserRepo
-}
-
-// EnrollUserToCourse implements UserService.
-func (u *UserRepos) EnrollUserToCourse(ctx context.Context, userId string, courseId string) error {
-
-	err := u.UserRepo.EnrollUserToCOourse(ctx, userId, courseId)
-	if err != nil {
-		return err
-	}
-	return nil
-
-}
-
-func (u *UserRepos) GetAllUserInCourse(ctx context.Context, courseId string) ([]typess.UserDBModel, error) {
-
-	users, err := u.UserRepo.GetAllUserINCourse(ctx, courseId)
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
-
-}
-
-// GetUserEnrolledCourses implements UserService.
-func (u *UserRepos) GetUserEnrolledCourses(ctx context.Context, userId string) ([]typess.CourseDBModel, error) {
-
-	courses, err := u.UserRepo.GetUserEnrolledCourses(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
-	return courses, nil
-
 }
 
 func GinErrorResponse(statusCode int, message string) error {
